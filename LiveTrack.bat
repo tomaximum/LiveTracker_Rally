@@ -17,14 +17,10 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Lancer le serveur Python en arrière-plan et ouvrir le navigateur
+:: Lancer le serveur Python (bloquant, pour que Ctrl+C fonctionne)
 echo Lancement du serveur...
-start /b python server.py
+python server.py
 
 echo.
-echo Le serveur fonctionne en arriere-plan.
-echo L'application va s'ouvrir dans votre navigateur par defaut.
-echo.
-echo Pour quitter l'application, fermez le navigateur puis cette fenetre.
-echo.
+echo Le serveur s'est arrete avec succes.
 pause
