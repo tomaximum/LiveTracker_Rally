@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiveTrack Rally — Suivi en temps réel</title>
+  <meta name="description" content="Application de suivi GPS en temps réel pour groupes de pilotes. Visualisez la trace GPX et les positions live avec alertes configurables." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Top Bar ──────────────────────────────────────────────── -->
+  <header id="topbar">
+    <div class="logo">
+      <div class="dot">📡</div>
+      LiveTrack Rally
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="topbar-actions">
+      <button class="btn" id="btn-sim" title="Mode simulation">
+        🎮 Simulation
+      </button>
+      <button class="btn" id="btn-fit" title="Centrer sur la trace">
+        🎯 Centrer
+      </button>
+      <button class="btn btn-accent" id="btn-settings">
+        ⚙️ Paramètres
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <aside id="sidebar">
+
+    <!-- GPX Drop Zone -->
+    <div class="sidebar-header">📍 Trace GPX</div>
+    <div id="gpx-drop">
+      <div class="drop-icon">🗂️</div>
+      <div class="drop-text">Glissez un fichier GPX ici</div>
+      <div class="drop-hint">ou cliquez pour parcourir</div>
+    </div>
+    <input type="file" id="gpx-file-input" accept=".gpx" style="display:none" />
+
+    <!-- Stats -->
+    <div style="display:flex;gap:0;margin:0 12px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
+      <div style="flex:1;padding:10px;text-align:center;border-right:1px solid var(--border)">
+        <div style="font-size:16px;font-weight:700;color:var(--text-primary)" id="stat-dist">—</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Distance</div>
+      </div>
+      <div style="flex:1;padding:10px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--text-primary)" id="stat-ele">—</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Dénivelé</div>
+      </div>
+    </div>
+
+    <!-- Participants -->
+    <div id="participants-section">
+      <div class="sidebar-header">
+        🏍️ Participants
+        <span style="font-weight:700;color:var(--accent);margin-left:auto;font-size:13px;letter-spacing:0" id="stat-pilots">0</span>
+      </div>
+      <div id="participants-list">
+        <div class="empty-state">
+          <div class="empty-icon">📡</div>
+          <div>Activez la simulation ou<br>connectez le bot Telegram</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div id="alerts-section">
+      <div class="alerts-head">
+        🚨 Alertes
+        <span id="alert-badge">0</span>
+        <span style="margin-left:auto;color:var(--text-muted);font-size:11px" id="stat-alerts">0 active(s)</span>
+      </div>
+      <div id="alerts-list">
+        <div class="empty-state" style="padding:10px 0">
+          <div>Aucune alerte</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Map ──────────────────────────────────────────────────── -->
+  <main id="map">
+    <div id="map-container">
+      <div id="leaflet-map"></div>
+
+      <!-- Simulation badge -->
+      <div id="sim-badge">MODE SIMULATION</div>
+
+      <!-- Map layer controls -->
+      <div id="map-controls">
+        <div class="map-ctrl-group">
+          <button class="map-ctrl-btn active" data-layer="osm">🗺️ Carte</button>
+          <button class="map-ctrl-btn" data-layer="satellite">🛰️ Satellite</button>
+          <button class="map-ctrl-btn" data-layer="topo">⛰️ Topo</button>
+        </div>
+      </div>
+
+      <!-- Stats overlay bar -->
+      <div id="stats-bar">
+        <div class="stat-item">
+          <div class="stat-value" id="bar-pilots">0</div>
+          <div class="stat-label">Pilotes</div>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-item">
+          <div class="stat-value" style="color:var(--accent)" id="bar-alerts">0</div>
+          <div class="stat-label">Alertes</div>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-item">
+          <div class="stat-value" style="color:var(--green)" id="bar-time">—</div>
+          <div class="stat-label">Heure</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div><!-- /#app -->
+
+<!-- ── Settings Modal ─────────────────────────────────────────── -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-title">⚙️ Paramètres</div>
+
+    <!-- Alertes -->
+    <div class="modal-section">
+      <div class="modal-section-title">🚨 Seuils d'alerte</div>
+
+      <div class="form-group">
+        <label>Déviation de trace</label>
+        <div class="range-row">
+          <input type="range" id="s-offroute" min="50" max="2000" step="50" />
+          <span class="range-val" id="s-offroute-val">200 m</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+          Alerte si un pilote s'écarte de plus de X mètres de la trace
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Immobilité</label>
+        <div class="range-row">
+          <input type="range" id="s-immobile" min="1" max="30" step="1" />
+          <span class="range-val" id="s-immobile-val">5 min</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+          Alerte si un pilote connecté ne bouge pas depuis X minutes
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="modal-section">
+      <div class="modal-section-title">🔔 Notifications</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Son d'alerte</span>
+        <label class="toggle"><input type="checkbox" id="s-sound" /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">Notifications navigateur</span>
+        <label class="toggle"><input type="checkbox" id="s-notif" /><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- Simulation -->
+    <div class="modal-section">
+      <div class="modal-section-title">🎮 Simulation</div>
+      <div class="toggle-row">
+        <span class="toggle-label">Démarrer en mode simulation</span>
+        <label class="toggle"><input type="checkbox" id="s-simmode" /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="info-box" style="margin-top:8px">
+        Le mode simulation génère 5 pilotes fictifs qui suivent (et dévient de) la trace. Idéal pour tester les alertes sans participants réels.
+      </div>
+    </div>
+
+    <!-- Connexion WebSocket -->
+    <div class="modal-section">
+      <div class="modal-section-title">🔌 Connexion serveur (live)</div>
+      <div class="form-group">
+        <label>URL WebSocket</label>
+        <input type="text" id="s-ws-url" placeholder="ws://localhost:3000" />
+      </div>
+      <div class="info-box">
+        Connectez un serveur WebSocket qui reçoit les positions Telegram.<br>
+        Chaque message doit avoir le format :<br>
+        <code>{ "type": "position", "participant": { "id", "name", "lat", "lng", "color", "avatar" } }</code>
+      </div>
+    </div>
+
+    <!-- Bot Telegram -->
+    <div class="modal-section">
+      <div class="modal-section-title">✈️ Bot Telegram</div>
+      <div class="form-group">
+        <label>Token du bot (stocké localement)</label>
+        <input type="password" id="s-token" placeholder="123456:ABC-..." />
+      </div>
+      <div class="info-box">
+        1. Créez un bot via <code>@BotFather</code> sur Telegram<br>
+        2. Demandez aux pilotes de partager leur <strong>Live Location</strong> dans le chat du bot<br>
+        3. Démarrez le serveur Node.js fourni avec <code>TELEGRAM_TOKEN=...</code><br>
+        4. L'URL WebSocket à entrer ci-dessus est <code>ws://votre-serveur:3000</code>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn" id="btn-modal-cancel">Annuler</button>
+      <button class="btn btn-accent" id="btn-modal-save">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ──────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Scripts (order matters) ─────────────────────────────────── -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/gpx.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/simulation.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Clock update -->
+<script>
+  (function clock() {
+    const el = document.getElementById('bar-time');
+    if (el) el.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    // Also sync pilot count
+    const pb = document.getElementById('bar-pilots');
+    const ab = document.getElementById('bar-alerts');
+    const sp = document.getElementById('stat-pilots');
+    const sa = document.getElementById('stat-alerts');
+    if (pb && sp) pb.textContent = sp.textContent;
+    if (ab && sa) ab.textContent = sa.textContent;
+    setTimeout(clock, 1000);
+  })();
+</script>
+</body>
+</html>
