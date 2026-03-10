@@ -530,8 +530,6 @@ function applySettings() {
     document.getElementById('s-offroute-val').textContent = state.settings.offRouteThresh + ' m';
     document.getElementById('s-immobile-val').textContent = state.settings.immobileThresh + ' min';
 
-    document.getElementById('s-ws-url').value = state.wsUrl || '';
-    document.getElementById('s-token').value = state.settings.telegramToken || '';
     document.getElementById('s-sound').checked = state.settings.soundAlert;
     document.getElementById('s-notif').checked = state.settings.browserNotif;
     document.getElementById('s-simmode').checked = state.settings.simMode;
@@ -540,11 +538,9 @@ function applySettings() {
 function collectSettings() {
     state.settings.offRouteThresh = parseInt(document.getElementById('s-offroute').value);
     state.settings.immobileThresh = parseInt(document.getElementById('s-immobile').value);
-    state.settings.telegramToken = document.getElementById('s-token').value;
     state.settings.soundAlert = document.getElementById('s-sound').checked;
     state.settings.browserNotif = document.getElementById('s-notif').checked;
     state.settings.simMode = document.getElementById('s-simmode').checked;
-    const wsUrl = document.getElementById('s-ws-url').value.trim();
 
     if (state.alertEngine) {
         state.alertEngine.updateSettings({
@@ -552,7 +548,6 @@ function collectSettings() {
             immobileThresh: state.settings.immobileThresh
         });
     }
-    if (wsUrl && wsUrl !== state.wsUrl) connectWS(wsUrl);
     if (state.settings.browserNotif && Notification.permission === 'default') {
         Notification.requestPermission();
     }
@@ -680,13 +675,16 @@ async function openPilotsModal() {
     } else {
         // Try via API endpoint if standalone app
         try {
-            // Just check if server is there, maybe we don't have the token but the python wrapper does.
-            // But actually, we need the bot username to build the t.me link.
-            // Easiest is to prompt the user to put token in settings.
-            document.getElementById('qr-img').style.display = 'none';
-            document.getElementById('qr-placeholder').style.display = 'flex';
-            document.getElementById('qr-placeholder').textContent = 'Allez dans "Paramètres" et entrez votre Token Bot pour afficher le QR Code.';
+            const res = await fetch('/api/token');
+            const data = await res.json();
+            if (data.token) {
+                fetchBotInfo(data.token);
+                return;
+            }
         } catch (e) { }
+
+        document.getElementById('qr-placeholder').style.display = 'flex';
+        document.getElementById('qr-placeholder').textContent = 'Assurez-vous d\'avoir configuré le fichier telegram_token.txt avec le token.';
     }
 }
 
@@ -697,7 +695,7 @@ async function fetchBotInfo(token) {
         if (data.ok && data.result.username) {
             const link = `https://t.me/${data.result.username}`;
 
-            document.getElementById('qr-img').style.display = 'none';
+            document.getElementById('qr-code-img').style.display = 'none';
             document.getElementById('qr-placeholder').style.display = 'none';
 
             const box = document.getElementById('qr-code-box');
@@ -711,9 +709,11 @@ async function fetchBotInfo(token) {
                 correctLevel: QRCode.CorrectLevel.H
             });
         } else {
+            console.error("fetchBotInfo logic failed. Telegram API response:", data);
             throw new Error();
         }
     } catch (e) {
+        console.error("fetchBotInfo Error:", e);
         document.getElementById('qr-placeholder').style.display = 'flex';
         document.getElementById('qr-placeholder').textContent = 'Token invalide ou erreur réseau.';
     }

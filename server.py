@@ -200,6 +200,23 @@ class AppHandler(SimpleHTTPRequestHandler):
                 }
             self.wfile.write(json.dumps(resp).encode())
             return
+        if self.path == "/api/token":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            token = os.environ.get("TELEGRAM_TOKEN", "").strip()
+            if not token:
+                token_file = Path(__file__).parent / "telegram_token.txt"
+                if token_file.exists():
+                    token = token_file.read_text().strip()
+            
+            import re
+            match = re.search(r"([0-9]+:[a-zA-Z0-9_-]+)", token)
+            clean_token = match.group(1) if match else ""
+            
+            self.wfile.write(json.dumps({"token": clean_token}).encode())
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -308,6 +325,10 @@ def main():
         token_file = Path(__file__).parent / "telegram_token.txt"
         if token_file.exists():
             token = token_file.read_text().strip()
+            
+    import re
+    match = re.search(r"([0-9]+:[a-zA-Z0-9_-]+)", token)
+    token = match.group(1) if match else ""
 
     if token:
         tg = threading.Thread(target=telegram_polling, args=(token,), daemon=True)
