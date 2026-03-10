@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initUI();
     applySettings();
 
+    // Try Auto connect to local WS
+    if (state.settings.wsUrl) {
+        connectWS(state.settings.wsUrl);
+    } else {
+        // default for standalone
+        connectWS('ws://127.0.0.1:3000');
+    }
+
     // Auto-start simulation if enabled and no GPX (show demo immediately)
     if (state.settings.simMode) {
         setTimeout(() => {
@@ -461,19 +469,23 @@ function connectWS(url) {
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'position') updateParticipant(msg.participant);
-                if (msg.type === 'participants') msg.participants.forEach(p => updateParticipant(p));
+                if (msg.type === 'participants' || msg.type === 'init') {
+                    msg.participants.forEach(p => updateParticipant(p));
+                }
+                if (msg.type === 'participant_added') updateParticipant(msg.participant);
             } catch { }
         };
-        state.ws.onopen = () => showToast('Connecté au serveur', 'success');
-        state.ws.onerror = () => showToast('Erreur de connexion WebSocket', 'error');
+        state.ws.onopen = () => {
+            showToast('Connecté au serveur', 'success');
+            state.wsUrl = url;
+        };
+        state.ws.onerror = () => { };
         state.ws.onclose = () => {
-            showToast('Déconnecté du serveur', 'warn');
-            // Reconnect after 5s
+            // Reconnect after 5s silently
             setTimeout(() => { if (state.wsUrl) connectWS(state.wsUrl); }, 5000);
         };
-        state.wsUrl = url;
     } catch (err) {
-        showToast('URL WebSocket invalide', 'error');
+        // silent
     }
 }
 
@@ -546,7 +558,7 @@ function collectSettings() {
     }
     saveSettings();
     showToast('Paramètres enregistrés', 'success');
-    closeModal();
+    closeSettingsModal();
 }
 
 /* ── UI Event Setup ─────────────────────────────────────────────────────────── */
@@ -575,12 +587,50 @@ function initUI() {
     });
 
     // Settings modal
-    document.getElementById('btn-settings').addEventListener('click', openModal);
+    document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
     document.getElementById('modal-overlay').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('modal-overlay')) closeModal();
+        if (e.target === document.getElementById('modal-overlay')) closeSettingsModal();
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
-    document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
+
+    // Participants modal
+    document.getElementById('btn-add-pilot').addEventListener('click', openPilotsModal);
+    document.getElementById('modal-pilots-overlay').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('modal-pilots-overlay')) closePilotsModal();
+    });
+    document.getElementById('btn-pilots-close').addEventListener('click', closePilotsModal);
+
+    // Add manual pilot
+    document.getElementById('btn-save-pilot').addEventListener('click', () => {
+        const name = document.getElementById('new-pilot-name').value.trim();
+        const avatar = document.getElementById('new-pilot-icon').value;
+        if (!name) return;
+
+        // Pick random color
+        const colors = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#14b8a6"];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        const id = 'manual_' + Date.now();
+        // Assuming initial location near trace or center
+        let lat = state.map.getCenter().lat;
+        let lng = state.map.getCenter().lng;
+        if (state.routePoints.length > 0) {
+            lat = state.routePoints[0].lat;
+            lng = state.routePoints[0].lng;
+        }
+
+        const p = { id, name, lat, lng, avatar, color, source: 'manual' };
+        updateParticipant(p);
+
+        // Broadcast to server if connected
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+            state.ws.send(JSON.stringify({ type: 'add_participant', participant: p }));
+        }
+
+        document.getElementById('new-pilot-name').value = '';
+        showToast(`Pilote ${name} ajouté`);
+    });
 
     // Simulation toggle
     document.getElementById('btn-sim').addEventListener('click', () => {
@@ -610,10 +660,65 @@ function initUI() {
     renderAlertList();
 }
 
-function openModal() {
+function openSettingsModal() {
     applySettings();
     document.getElementById('modal-overlay').classList.add('open');
 }
-function closeModal() {
+function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* ── Telegram Bot Fetching & QR Logic ───────────────────────────────────────── */
+let qrCode = null;
+
+async function openPilotsModal() {
+    document.getElementById('modal-pilots-overlay').classList.add('open');
+
+    // Try to generate QR code if we have a token or the server is running
+    if (state.settings.telegramToken) {
+        fetchBotInfo(state.settings.telegramToken);
+    } else {
+        // Try via API endpoint if standalone app
+        try {
+            // Just check if server is there, maybe we don't have the token but the python wrapper does.
+            // But actually, we need the bot username to build the t.me link.
+            // Easiest is to prompt the user to put token in settings.
+            document.getElementById('qr-img').style.display = 'none';
+            document.getElementById('qr-placeholder').style.display = 'flex';
+            document.getElementById('qr-placeholder').textContent = 'Allez dans "Paramètres" et entrez votre Token Bot pour afficher le QR Code.';
+        } catch (e) { }
+    }
+}
+
+async function fetchBotInfo(token) {
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const data = await res.json();
+        if (data.ok && data.result.username) {
+            const link = `https://t.me/${data.result.username}`;
+
+            document.getElementById('qr-img').style.display = 'none';
+            document.getElementById('qr-placeholder').style.display = 'none';
+
+            const box = document.getElementById('qr-code-box');
+            box.innerHTML = '';
+            qrCode = new QRCode(box, {
+                text: link,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } else {
+            throw new Error();
+        }
+    } catch (e) {
+        document.getElementById('qr-placeholder').style.display = 'flex';
+        document.getElementById('qr-placeholder').textContent = 'Token invalide ou erreur réseau.';
+    }
+}
+
+function closePilotsModal() {
+    document.getElementById('modal-pilots-overlay').classList.remove('open');
 }
