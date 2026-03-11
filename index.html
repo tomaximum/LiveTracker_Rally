@@ -42,14 +42,29 @@
     <!-- ── Sidebar ──────────────────────────────────────────────── -->
     <aside id="sidebar">
 
-      <!-- GPX Drop Zone -->
-      <div class="sidebar-header">📍 Trace GPX</div>
+      <!-- GPX Drop Zone & Library -->
+      <div class="sidebar-header" style="display:flex;align-items:center;">📍 Traces GPX</div>
       <div id="gpx-drop">
         <div class="drop-icon">🗂️</div>
         <div class="drop-text">Glissez un fichier GPX ici</div>
         <div class="drop-hint">ou cliquez pour parcourir</div>
       </div>
       <input type="file" id="gpx-file-input" accept=".gpx" style="display:none" />
+
+      <!-- GPX Library List (checkboxes per trace) -->
+      <div id="gpx-library-container" style="max-height:150px;overflow-y:auto;margin:4px 12px;">
+        <div id="gpx-library-list"></div>
+      </div>
+
+      <!-- Visibility toggles -->
+      <div style="margin:6px 12px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;display:flex;flex-direction:column;gap:5px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="toggle-traces" checked> Traces GPX importées
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="toggle-waypoints" checked> Zones OpenRally (Waypoints)
+        </label>
+      </div>
 
       <!-- Stats -->
       <div
@@ -253,12 +268,12 @@
 
   <!-- ── Scripts (order matters) ─────────────────────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/geo.js"></script>
-  <script src="js/gpx.js"></script>
-  <script src="js/alerts.js"></script>
-  <script src="js/simulation.js"></script>
+  <script src="js/geo.js?v=1"></script>
+  <script src="js/gpx.js?v=1"></script>
+  <script src="js/alerts.js?v=1"></script>
+  <script src="js/simulation.js?v=1"></script>
   <script src="js/qrcode.min.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=1"></script>
 
   <!-- Clock update -->
   <script>

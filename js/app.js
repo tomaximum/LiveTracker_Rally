@@ -4,8 +4,10 @@
 /* ── State ─────────────────────────────────────────────────────────────────── */
 const state = {
     map: null,
-    routePoints: [],        // [{lat,lng}] parsed from GPX
-    routeLayer: null,       // Leaflet polyline
+    routePoints: [],        // [{lat,lng}] merged from all loaded GPX
+    waypoints: [],          // [{lat,lng,name,validationRadius,openingRadius}] merged
+    routeLayer: null,       // kept for backward compat (demo GPX)
+    loadedGpx: new Map(),   // gpxId -> { id, name, routePoints, waypoints, layers:[], wpLayer }
     participants: new Map(), // id → { ...data, marker, markerEl }
     focusedId: null,
     simMode: false,
@@ -20,7 +22,9 @@ const state = {
         telegramToken: '',
         simMode: true,
         soundAlert: false,
-        browserNotif: false
+        browserNotif: false,
+        showTraces: true,
+        showWaypoints: true
     }
 };
 
@@ -103,65 +107,109 @@ function initMap() {
 }
 
 /* ── GPX Handling ───────────────────────────────────────────────────────────── */
-function loadGPX(xmlText, filename) {
+
+function rebuildGlobalRoute() {
+    state.routePoints = [];
+    state.waypoints = [];
+    for (const gpx of state.loadedGpx.values()) {
+        state.routePoints.push(...gpx.routePoints);
+        state.waypoints.push(...gpx.waypoints);
+    }
+    updateRouteStats(state.routePoints);
+    if (state.simulation) state.simulation.setRoute(state.routePoints);
+}
+
+function loadGPX(xmlText, filename, gpxId = null) {
     try {
-        const points = parseGPX(xmlText);
-        if (points.length < 2) throw new Error('GPX trop court (moins de 2 points)');
+        const parsed = parseGPX(xmlText);
+        const points = parsed.route || [];
+        const waypoints = parsed.waypoints || [];
+        
+        if (points.length < 2 && waypoints.length === 0) throw new Error('GPX invalide ou vide');
 
-        state.routePoints = points;
+        const id = gpxId !== null ? gpxId : Date.now();
+        if (state.loadedGpx.has(id)) return; // Already loaded (avoid double-add)
 
-        // Remove old layer
-        if (state.routeLayer) state.map.removeLayer(state.routeLayer);
+        const gpxInfo = {
+            id, name: filename,
+            routePoints: points,
+            waypoints: waypoints,
+            layers: [],
+            wpLayer: L.layerGroup()
+        };
 
-        // Draw route with shadow effect (glow)
-        const latlngs = points.map(p => [p.lat, p.lng]);
+        if (points.length >= 2) {
+            const latlngs = points.map(p => [p.lat, p.lng]);
 
-        // Glow / shadow polyline behind
-        L.polyline(latlngs, {
-            color: 'rgba(245,158,11,0.25)',
-            weight: 10,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(state.map);
+            const shadowLayer = L.polyline(latlngs, {
+                color: 'rgba(245,158,11,0.25)', weight: 10, lineCap: 'round', lineJoin: 'round'
+            });
+            const mainLayer = L.polyline(latlngs, {
+                color: '#f59e0b', weight: 4, lineCap: 'round', lineJoin: 'round'
+            });
 
-        // Main route line
-        state.routeLayer = L.polyline(latlngs, {
-            color: '#f59e0b',
-            weight: 4,
-            lineCap: 'round',
-            lineJoin: 'round',
-            dashArray: null
-        }).addTo(state.map);
+            if (state.settings.showTraces !== false) {
+                shadowLayer.addTo(state.map);
+                mainLayer.addTo(state.map);
+            }
+            gpxInfo.layers.push(shadowLayer, mainLayer);
+            state.map.fitBounds(mainLayer.getBounds(), { padding: [40, 40] });
 
-        // Start/end markers
-        L.marker(latlngs[0], { icon: createWaypointIcon('🏁', '#10b981') })
-            .bindTooltip('Départ', { permanent: false }).addTo(state.map);
-        L.marker(latlngs[latlngs.length - 1], { icon: createWaypointIcon('🏁', '#ef4444') })
-            .bindTooltip('Arrivée', { permanent: false }).addTo(state.map);
+            // Start/end markers
+            L.marker(latlngs[0], { icon: createWaypointIcon('🏁', '#10b981') })
+                .bindTooltip('Départ', { permanent: false }).addTo(state.map);
+            L.marker(latlngs[latlngs.length - 1], { icon: createWaypointIcon('🏁', '#ef4444') })
+                .bindTooltip('Arrivée', { permanent: false }).addTo(state.map);
 
-        // Fit map
-        state.map.fitBounds(state.routeLayer.getBounds(), { padding: [40, 40] });
-
-        // Update GPX drop zone
-        const dropEl = document.getElementById('gpx-drop');
-        dropEl.classList.add('loaded');
-        dropEl.querySelector('.drop-icon').textContent = '✅';
-        dropEl.querySelector('.drop-text').textContent = filename || 'Trace chargée';
-        dropEl.querySelector('.drop-hint').textContent = `${points.length} points GPS`;
-
-        // Update stats
-        updateRouteStats(points);
-
-        // If simulation running, update route
-        if (state.simulation) {
-            state.simulation.setRoute(points);
+        } else if (waypoints.length > 0) {
+            const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lng]));
+            state.map.fitBounds(bounds, { padding: [40, 40] });
         }
 
-        showToast(`Trace GPX chargée — ${points.length} pts`, 'success');
+        // Draw OpenRally waypoints
+        waypoints.forEach(wp => {
+            const isStartEnd = wp.name === 'ASS' || wp.name === 'DSS';
+            const color = isStartEnd ? '#10b981' : '#3b82f6';
+            
+            L.circle([wp.lat, wp.lng], {
+                color, fillColor: color, fillOpacity: 0.1, radius: wp.validationRadius, weight: 2
+            }).bindTooltip(wp.name, { permanent: true, direction: 'top' }).addTo(gpxInfo.wpLayer);
+
+            L.circle([wp.lat, wp.lng], {
+                color, fillColor: 'transparent', radius: wp.openingRadius, weight: 1, dashArray: '5,5'
+            }).addTo(gpxInfo.wpLayer);
+        });
+
+        if (state.settings.showWaypoints !== false) {
+            gpxInfo.wpLayer.addTo(state.map);
+        }
+
+        state.loadedGpx.set(id, gpxInfo);
+        rebuildGlobalRoute();
+
+        // Update drop zone UI
+        const dropEl = document.getElementById('gpx-drop');
+        if (dropEl) {
+            dropEl.classList.add('loaded');
+            dropEl.querySelector('.drop-icon').textContent = '✅';
+            dropEl.querySelector('.drop-text').textContent = filename || 'Trace chargée';
+            dropEl.querySelector('.drop-hint').textContent = `${points.length} pts, ${waypoints.length} WPs`;
+        }
+
+        showToast(`${filename} chargée — ${points.length} pts, ${waypoints.length} WPs`, 'success');
 
     } catch (err) {
         showToast('Erreur GPX : ' + err.message, 'error');
     }
+}
+
+function unloadGPX(id) {
+    const gpx = state.loadedGpx.get(id);
+    if (!gpx) return;
+    gpx.layers.forEach(l => state.map.removeLayer(l));
+    state.map.removeLayer(gpx.wpLayer);
+    state.loadedGpx.delete(id);
+    rebuildGlobalRoute();
 }
 
 function updateRouteStats(points) {
@@ -452,9 +500,14 @@ function stopSimulation() {
         state.simulation.stop();
         state.simulation = null;
     }
-    // Clear participant markers
+    // Clear participant markers and alerts
     state.participants.forEach(p => state.map.removeLayer(p.marker));
     state.participants.clear();
+    state.alertLog = [];
+    if (state.alertEngine && typeof state.alertEngine.clearAll === 'function') {
+        state.alertEngine.clearAll();
+    }
+    renderAlertList();
     renderParticipantList();
     document.getElementById('sim-badge').classList.remove('visible');
     document.getElementById('btn-sim').classList.remove('active');
@@ -567,7 +620,7 @@ function initUI() {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => loadGPX(ev.target.result, file.name);
+        reader.onload = (ev) => { uploadGPX(file.name, ev.target.result); };
         reader.readAsText(file);
     });
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
@@ -577,9 +630,31 @@ function initUI() {
         const file = e.dataTransfer.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (ev) => loadGPX(ev.target.result, file.name);
+        reader.onload = (ev) => { uploadGPX(file.name, ev.target.result); };
         reader.readAsText(file);
     });
+
+    // Trace / Waypoint toggles
+    const tTraces = document.getElementById('toggle-traces');
+    if(tTraces) tTraces.addEventListener('change', (e) => {
+        state.settings.showTraces = e.target.checked;
+        for (const gpx of state.loadedGpx.values()) {
+            gpx.layers.forEach(l => {
+                if (e.target.checked) state.map.addLayer(l);
+                else state.map.removeLayer(l);
+            });
+        }
+    });
+    const tWps = document.getElementById('toggle-waypoints');
+    if(tWps) tWps.addEventListener('change', (e) => {
+        state.settings.showWaypoints = e.target.checked;
+        for (const gpx of state.loadedGpx.values()) {
+            if (e.target.checked) state.map.addLayer(gpx.wpLayer);
+            else state.map.removeLayer(gpx.wpLayer);
+        }
+    });
+
+    fetchGPXLibrary();
 
     // Settings modal
     document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
@@ -721,4 +796,58 @@ async function fetchBotInfo(token) {
 
 function closePilotsModal() {
     document.getElementById('modal-pilots-overlay').classList.remove('open');
+}
+
+/* ── GPX Library API ────────────────────────────────────────────────────────── */
+async function fetchGPXLibrary() {
+    try {
+        const res = await fetch('/api/gpx');
+        const list = await res.json();
+        const container = document.getElementById('gpx-library-list');
+        if (!container) return;
+        if (list.length === 0) {
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace sauvée</div>';
+            return;
+        }
+        container.innerHTML = list.map(g => {
+            const isLoaded = state.loadedGpx.has(g.id);
+            return `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer;">
+                <input type="checkbox" onchange="window.toggleLibraryGPX(${g.id}, this.checked)" ${isLoaded ? 'checked' : ''}>
+                🗺️ ${g.name}
+            </label>`;
+        }).join('');
+    } catch(e) {}
+}
+
+window.toggleLibraryGPX = async function(id, checked) {
+    if (checked) {
+        await loadGPXFromServer(id);
+    } else {
+        unloadGPX(id);
+    }
+    fetchGPXLibrary();
+}
+
+async function loadGPXFromServer(id) {
+    try {
+        const res = await fetch('/api/gpx/' + id);
+        if (res.ok) {
+            const data = await res.json();
+            loadGPX(data.data, data.name, id);
+        }
+    } catch(e) {}
+}
+
+function uploadGPX(name, data) {
+    fetch('/api/gpx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, data })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        loadGPX(data, name, resData.id);
+        fetchGPXLibrary();
+    })
+    .catch(console.error);
 }

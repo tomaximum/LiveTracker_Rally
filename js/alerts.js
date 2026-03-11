@@ -118,4 +118,8 @@ class AlertEngine {
     clearParticipant(pid) {
         this.activeAlerts.delete(pid);
     }
+
+    clearAll() {
+        this.activeAlerts.clear();
+    }
 }

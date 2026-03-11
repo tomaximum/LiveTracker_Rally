@@ -19,6 +19,19 @@ import socket
 import hashlib
 import base64
 import struct
+import sqlite3
+
+DB_FILE = str(Path(__file__).parent / "livetiming.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS known_gpx
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, data TEXT)''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # État partagé
 state = {
@@ -168,7 +181,7 @@ class AppHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(Path(__file__).parent), **kwargs)
 
-    def log_message(self, fmt, *args):
+    def log_message(self, format, *args):
         pass  # Silencieux
 
     def do_GET(self):
@@ -217,6 +230,37 @@ class AppHandler(SimpleHTTPRequestHandler):
             
             self.wfile.write(json.dumps({"token": clean_token}).encode())
             return
+        if self.path == '/api/gpx':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute('SELECT id, name FROM known_gpx')
+            gpx_list = [{'id': r[0], 'name': r[1]} for r in c.fetchall()]
+            conn.close()
+            self.wfile.write(json.dumps(gpx_list).encode())
+            return
+        if self.path.startswith('/api/gpx/'):
+            try:
+                gpx_id = int(self.path.split('/')[-1])
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('SELECT name, data FROM known_gpx WHERE id=?', (gpx_id,))
+                row = c.fetchone()
+                conn.close()
+                if row:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'id': gpx_id, 'name': row[0], 'data': row[1]}).encode())
+                else:
+                    self.send_response(404); self.end_headers()
+            except ValueError:
+                self.send_response(400); self.end_headers()
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -234,6 +278,31 @@ class AppHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_response(400)
                 self.end_headers()
+                self.wfile.write(str(e).encode())
+            return
+        if self.path == '/api/gpx':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                msg = json.loads(body)
+                name = msg.get('name')
+                data = msg.get('data')
+                if name and data:
+                    conn = sqlite3.connect(DB_FILE)
+                    c = conn.cursor()
+                    c.execute('INSERT INTO known_gpx (name, data) VALUES (?, ?)', (name, data))
+                    new_id = c.lastrowid
+                    conn.commit()
+                    conn.close()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'id': new_id, 'name': name}).encode())
+                else:
+                    self.send_response(400); self.end_headers()
+            except Exception as e:
+                self.send_response(400); self.end_headers()
                 self.wfile.write(str(e).encode())
             return
         self.send_response(404)

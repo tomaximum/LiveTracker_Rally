@@ -9,8 +9,8 @@ Ce guide vous explique étape par étape comment créer le bot Telegram qui serv
 3. Assurez-vous qu'il a le petit badge bleu certifié (✅) à côté de son nom, puis cliquez dessus.
 4. Appuyez sur le bouton **Démarrer** (ou tapez `/start`).
 5. Tapez la commande `/newbot` et envoyez le message.
-6. BotFather vous demande un **nom** pour votre bot. Tapez par exemple `Rallye LiveTrack` et envoyez.
-7. Il vous demande ensuite un **nom d'utilisateur** (username), qui doit obligatoirement se terminer par le mot `bot` (ex: `MonRallye2026Bot` ou `LiveTrackDupont_bot`). Tapez-le et envoyez.
+6. BotFather vous demande un **nom** pour votre bot. Tapez par exemple `Rallye LiveTiming` et envoyez.
+7. Il vous demande ensuite un **nom d'utilisateur** (username), qui doit obligatoirement se terminer par le mot `bot` (ex: `MonRallye2026Bot` ou `LiveTimingDupont_bot`). Tapez-le et envoyez.
 
 ## Étape 2 : Récupérer le "Token" (le code secret)
 
@@ -23,12 +23,12 @@ Au milieu de ce message, il y a une ligne qui ressemble à ça :
 Ce long code bizarre est votre **Token**. C'est la clé de votre application.
 👉 **Copiez ce texte.**
 
-## Étape 3 : Configurer l'application LiveTrack
+## Étape 3 : Configurer l'application LiveTiming
 
 1. Dans le dossier `livetracking` sur votre ordinateur, créez un nouveau fichier texte vide.
 2. Nommez ce fichier exactement `telegram_token.txt`
 3. Ouvrez ce fichier, **collez** le fameux token copié à l'étape 2, et enregistrez le fichier (Ctrl+S).
-4. C'est tout ! Double-cliquez maintenant sur `LiveTrack.bat` pour lancer l'application.
+4. C'est tout ! Double-cliquez maintenant sur `LiveTiming.bat` pour lancer l'application.
 
 ## Étape 4 : Comment les pilotes se connectent
 
@@ -40,7 +40,7 @@ Une fois que l'application tourne sur votre ordi :
 4. Ils choisissent **Position** (ou Location).
 5. Ils choisissent **Partager ma position en direct** (Share My Live Location) et valident "Pendant 8 heures".
 
-Dès qu'ils font ça, **pouf !** leur petite moto apparaîtra comme par magie sur votre carte LiveTrack Rally sur votre ordinateur.
+Dès qu'ils font ça, **pouf !** leur petite moto apparaîtra comme par magie sur votre carte LiveTiming Rally sur votre ordinateur.
 
 ---
 
