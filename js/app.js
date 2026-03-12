@@ -28,7 +28,10 @@ const state = {
         showWaypoints: true,
         showPilotTraces: true
     },
-    renderListTimeout: null
+    renderListTimeout: null,
+    isSharing: false,
+    watchId: null,
+    myId: 'browser_' + Date.now()
 };
 
 // Automated test helper
@@ -895,6 +898,9 @@ function initUI() {
         });
     }
 
+    // Share position logic
+    document.getElementById('btn-share-pos').addEventListener('click', toggleSharePosition);
+
     // Refresh participant list periodically (time since last update)
     setInterval(renderParticipantList, 30000);
     renderAlertList();
@@ -1118,4 +1124,80 @@ function updatePilotTraces() {
             }
         }
     });
+}
+
+/* ── Browser Geolocation ───────────────────────────────────────────────────── */
+function toggleSharePosition() {
+    if (state.isSharing) {
+        stopSharingPosition();
+    } else {
+        startSharingPosition();
+    }
+}
+
+function startSharingPosition() {
+    if (!navigator.geolocation) {
+        showToast("Géolocalisation non supportée", "error");
+        return;
+    }
+
+    const btn = document.getElementById('btn-share-pos');
+    btn.innerHTML = '🛑 Arrêter le partage';
+    btn.classList.remove('btn-accent');
+    btn.classList.add('btn-danger');
+
+    state.isSharing = true;
+    state.watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            const p = {
+                id: state.myId,
+                name: "Moi (Navigateur)",
+                lat,
+                lng,
+                color: "#10b981",
+                avatar: "📍",
+                source: "browser"
+            };
+            
+            updateParticipant(p);
+            
+            // Broadcast to server if connected
+            if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                state.ws.send(JSON.stringify({ type: 'position', participant: p }));
+            }
+        },
+        (err) => {
+            console.error("Erreur géolocalisation:", err);
+            showToast("Erreur GPS : " + err.message, "error");
+            stopSharingPosition();
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
+    showToast("Suivi GPS activé", "success");
+}
+
+function stopSharingPosition() {
+    if (state.watchId !== null) {
+        navigator.geolocation.clearWatch(state.watchId);
+        state.watchId = null;
+    }
+    
+    state.isSharing = false;
+    const btn = document.getElementById('btn-share-pos');
+    btn.innerHTML = '📍 Partager ma position';
+    btn.classList.add('btn-accent');
+    btn.classList.remove('btn-danger');
+    
+    // Notify server of removal (optional, but good practice)
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'remove_participant', id: state.myId }));
+    }
+    
+    removeParticipant(state.myId);
+    showToast("Suivi GPS arrêté", "info");
 }

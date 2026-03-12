@@ -21,7 +21,29 @@ import base64
 import struct
 import sqlite3
 
-DB_FILE = str(Path(__file__).parent / "livetiming.db")
+# ─── Path Handling for PyInstaller ──────────────────────────────────────────
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    if getattr(sys, 'frozen', False):
+        # Bundle directory (sys._MEIPASS)
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    else:
+        # Development directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+def get_external_path(filename):
+    """ Get path for files that should stay next to the EXE (DB, token) """
+    if getattr(sys, 'frozen', False):
+        # Dir of the EXE
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Development directory
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, filename)
+
+DB_FILE = get_external_path("livetiming.db")
+STATIC_DIR = get_resource_path(".")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -210,7 +232,7 @@ def handle_ws_message(msg):
 # ─── HTTP Server ──────────────────────────────────────────────────────────────
 class AppHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(Path(__file__).parent), **kwargs)
+        super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
     def log_message(self, format, *args):
         pass  # Silencieux
@@ -257,14 +279,16 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             token = os.environ.get("TELEGRAM_TOKEN", "").strip()
             if not token:
-                token_file = Path(__file__).parent / "telegram_token.txt"
-                if token_file.exists():
-                    token = token_file.read_text().strip()
+                token_file = get_external_path("telegram_token.txt")
+                if os.path.exists(token_file):
+                    with open(token_file, "r", encoding="utf-8") as f:
+                        token = f.read().strip()
             
             import re
             match = re.search(r"([0-9]+:[a-zA-Z0-9_-]+)", token)
             clean_token = match.group(1) if match else ""
             
+            print(f"[API] Token requested, returning: {clean_token[:10] if clean_token else ''}...")
             self.wfile.write(json.dumps({"token": clean_token}).encode())
             return
         if self.path == '/api/gpx':
@@ -490,9 +514,17 @@ def main():
     token = os.environ.get("TELEGRAM_TOKEN", "").strip()
     if not token:
         # Try to read from token.txt
-        token_file = Path(__file__).parent / "telegram_token.txt"
-        if token_file.exists():
-            token = token_file.read_text().strip()
+        token_file = get_external_path("telegram_token.txt")
+        print(f"[Main] Recherche du token dans : {token_file}")
+        if os.path.exists(token_file):
+            try:
+                with open(token_file, "r", encoding="utf-8") as f:
+                    token = f.read().strip()
+                print(f"[Main] Token trouvé dans le fichier ({len(token)} chars)")
+            except Exception as e:
+                print(f"[Main] Erreur lors de la lecture du fichier token : {e}")
+        else:
+            print(f"[Main] Fichier token non trouvé à l'emplacement : {token_file}")
             
     import re
     match = re.search(r"([0-9]+:[a-zA-Z0-9_-]+)", token)
