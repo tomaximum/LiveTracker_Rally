@@ -701,6 +701,7 @@ input:focus {
 
 input[type="range"] {
   -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 4px;
   background: var(--border-bright);
@@ -711,6 +712,7 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -999,4 +1001,29 @@ input:checked+.toggle-slider::before {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-bright) transparent;
+}
+
+.btn-icon-del-pilot {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    opacity: 0.5;
+    transition: opacity 0.2s, transform 0.2s;
+    margin-left: 8px;
+}
+.btn-icon-del-pilot:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+.participant-card {
+    position: relative;
+    padding-right: 40px !important;
+}
+.btn-icon-del-pilot {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
 }

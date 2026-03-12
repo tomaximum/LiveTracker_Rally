@@ -17,16 +17,25 @@ const state = {
     simulation: null,
     alertLog: [],           // [{...alert}]
     settings: {
-        offRouteThresh: 200,  // metres
-        immobileThresh: 5,    // minutes
-        telegramToken: '',
-        simMode: true,
-        soundAlert: false,
+        offRouteThresh: 100,
+        immobileThresh: 5,
+        logInterval: 10,
+        soundAlert: true,
         browserNotif: false,
+        simMode: false,
+        showRadii: true,
         showTraces: true,
-        showWaypoints: true
-    }
+        showWaypoints: true,
+        showPilotTraces: true
+    },
+    renderListTimeout: null
 };
+
+// Automated test helper
+if (new URLSearchParams(window.location.search).get('test') === 'true') {
+    window.isAutomatedTest = true;
+    console.log("Automated test mode ENABLED");
+}
 
 /* ── Settings persistence ──────────────────────────────────────────────────── */
 function loadSettings() {
@@ -171,13 +180,25 @@ function loadGPX(xmlText, filename, gpxId = null) {
             const isStartEnd = wp.name === 'ASS' || wp.name === 'DSS';
             const color = isStartEnd ? '#10b981' : '#3b82f6';
             
-            L.circle([wp.lat, wp.lng], {
-                color, fillColor: color, fillOpacity: 0.1, radius: wp.validationRadius, weight: 2
-            }).bindTooltip(wp.name, { permanent: true, direction: 'top' }).addTo(gpxInfo.wpLayer);
+            const wpLabel = `${wp.name}${wp.type ? ' [' + wp.type + ']' : ''}`;
+            console.log("Rendering WP:", wpLabel, "Type:", wp.type);
 
-            L.circle([wp.lat, wp.lng], {
-                color, fillColor: 'transparent', radius: wp.openingRadius, weight: 1, dashArray: '5,5'
-            }).addTo(gpxInfo.wpLayer);
+            // Validation Circle (Physical boundary)
+            const validationCircle = L.circle([wp.lat, wp.lng], {
+                color, fillColor: color, fillOpacity: 0.1, radius: wp.validationRadius, weight: 2
+            }).bindTooltip(wpLabel, { permanent: true, direction: 'top' });
+
+            // Opening Circle (Visibility boundary)
+            const openingCircle = L.circle([wp.lat, wp.lng], {
+                color, fillColor: 'transparent', dashArray: '5, 10', radius: wp.openingRadius, weight: 1, interactive: false
+            });
+
+            if (state.settings.showWaypoints !== false) {
+                validationCircle.addTo(gpxInfo.wpLayer);
+                openingCircle.addTo(gpxInfo.wpLayer);
+            }
+            
+            gpxInfo.layers.push(validationCircle, openingCircle);
         });
 
         if (state.settings.showWaypoints !== false) {
@@ -322,8 +343,15 @@ function updateParticipant(data) {
         });
     }
 
-    renderParticipantList();
-    updateStats();
+    // Performance: Throttle re-rendering the list
+    if (!state.renderListTimeout) {
+        state.renderListTimeout = setTimeout(() => {
+            renderParticipantList();
+            updateStats();
+            updatePilotTraces(); // New: update trajectories
+            state.renderListTimeout = null;
+        }, 1000); // Max once per second
+    }
 }
 
 function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
@@ -416,7 +444,8 @@ function renderParticipantList() {
           <span class="p-time">MAJ ${sinceMin}min</span>
         </div>
       </div>
-      <div class="p-status ${statusClass}">${statusLabel}</div>`;
+      <div class="p-status ${statusClass}">${statusLabel}</div>
+      <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>`;
         card.addEventListener('click', () => focusParticipant(id));
         container.appendChild(card);
     });
@@ -509,6 +538,7 @@ function stopSimulation() {
     }
     renderAlertList();
     renderParticipantList();
+    updateStats();
     document.getElementById('sim-badge').classList.remove('visible');
     document.getElementById('btn-sim').classList.remove('active');
 }
@@ -516,31 +546,47 @@ function stopSimulation() {
 /* ── WebSocket (Live mode) ──────────────────────────────────────────────────── */
 function connectWS(url) {
     if (state.ws) { state.ws.close(); state.ws = null; }
+    console.log('[WS] Tentative de connexion à :', url);
     try {
         state.ws = new WebSocket(url);
         state.ws.onmessage = (e) => {
+            console.log('[WS] Message reçu :', e.data);
             try {
                 const msg = JSON.parse(e.data);
-                if (msg.type === 'position') updateParticipant(msg.participant);
+                if (msg.type === 'position') {
+                    console.log('[WS] Position reçue pour :', msg.participant.name);
+                    updateParticipant(msg.participant);
+                }
                 if (msg.type === 'participants' || msg.type === 'init') {
+                    console.log('[WS] Init avec', msg.participants.length, 'participants');
                     msg.participants.forEach(p => updateParticipant(p));
                 }
-                if (msg.type === 'participant_added') updateParticipant(msg.participant);
-            } catch { }
+                if (msg.type === 'participant_added') {
+                    console.log('[WS] Participante ajouté :', msg.participant.name);
+                    updateParticipant(msg.participant);
+                }
+            } catch (err) {
+                console.error('[WS] Erreur parsing message :', err);
+            }
         };
         state.ws.onopen = () => {
+            console.log('[WS] Connecté !');
             showToast('Connecté au serveur', 'success');
             state.wsUrl = url;
         };
-        state.ws.onerror = () => { };
+        state.ws.onerror = (err) => { 
+            console.error('[WS] Erreur WebSocket :', err);
+        };
         state.ws.onclose = () => {
+            console.warn('[WS] Connexion fermée. Reconnexion dans 5s...');
             // Reconnect after 5s silently
             setTimeout(() => { if (state.wsUrl) connectWS(state.wsUrl); }, 5000);
         };
     } catch (err) {
-        // silent
+        console.error('[WS] Erreur lors de la création du WebSocket :', err);
     }
 }
+
 
 /* ── Toast ──────────────────────────────────────────────────────────────────── */
 function showToast(msg, type = 'success', subMsg = '') {
@@ -578,22 +624,27 @@ function applySettings() {
     // Sliders
     const orSlider = document.getElementById('s-offroute');
     const immSlider = document.getElementById('s-immobile');
-    orSlider.value = state.settings.offRouteThresh;
-    immSlider.value = state.settings.immobileThresh;
-    document.getElementById('s-offroute-val').textContent = state.settings.offRouteThresh + ' m';
-    document.getElementById('s-immobile-val').textContent = state.settings.immobileThresh + ' min';
+    const logSlider = document.getElementById('s-log-interval');
+    if (logSlider) {
+        logSlider.value = state.settings.logInterval || 10;
+        document.getElementById('s-log-interval-val').textContent = logSlider.value + ' s';
+        logSlider.oninput = () => { document.getElementById('s-log-interval-val').textContent = logSlider.value + ' s'; };
+    }
 
     document.getElementById('s-sound').checked = state.settings.soundAlert;
     document.getElementById('s-notif').checked = state.settings.browserNotif;
     document.getElementById('s-simmode').checked = state.settings.simMode;
+    document.getElementById('s-show-radii').checked = state.settings.showRadii !== false;
 }
 
 function collectSettings() {
     state.settings.offRouteThresh = parseInt(document.getElementById('s-offroute').value);
     state.settings.immobileThresh = parseInt(document.getElementById('s-immobile').value);
+    state.settings.logInterval = parseInt(document.getElementById('s-log-interval').value);
     state.settings.soundAlert = document.getElementById('s-sound').checked;
     state.settings.browserNotif = document.getElementById('s-notif').checked;
     state.settings.simMode = document.getElementById('s-simmode').checked;
+    state.settings.showRadii = document.getElementById('s-show-radii').checked;
 
     if (state.alertEngine) {
         state.alertEngine.updateSettings({
@@ -601,6 +652,17 @@ function collectSettings() {
             immobileThresh: state.settings.immobileThresh
         });
     }
+    
+    // Send settings to server
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            immobile_threshold: state.settings.immobileThresh,
+            log_interval: state.settings.logInterval
+        })
+    }).catch(console.error);
+
     if (state.settings.browserNotif && Notification.permission === 'default') {
         Notification.requestPermission();
     }
@@ -614,6 +676,37 @@ function initUI() {
     // GPX drop zone
     const dropZone = document.getElementById('gpx-drop');
     const fileInput = document.getElementById('gpx-file-input');
+
+    // Sidebar toggles
+    document.getElementById('toggle-traces').onchange = (e) => {
+        state.loadedGpx.forEach(g => {
+            g.layers.forEach(l => {
+                if (e.target.checked) l.addTo(state.map);
+                else state.map.removeLayer(l);
+            });
+        });
+    };
+    document.getElementById('toggle-waypoints').onchange = (e) => {
+        state.loadedGpx.forEach(g => {
+            if (e.target.checked) g.wpLayer.addTo(state.map);
+            else state.map.removeLayer(g.wpLayer);
+        });
+    };
+    document.getElementById('toggle-radii').onchange = (e) => {
+        state.settings.showRadii = e.target.checked;
+        state.loadedGpx.forEach(g => {
+            g.layers.forEach(l => {
+                if (l instanceof L.Circle && l.options.dashArray === '5,5') {
+                    if (e.target.checked) l.addTo(g.wpLayer);
+                    else g.wpLayer.removeLayer(l);
+                }
+            });
+        });
+    };
+    document.getElementById('toggle-pilot-traces').onchange = (e) => {
+        state.settings.showPilotTraces = e.target.checked;
+        updatePilotTraces();
+    };
 
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => {
@@ -645,12 +738,16 @@ function initUI() {
             });
         }
     });
-    const tWps = document.getElementById('toggle-waypoints');
-    if(tWps) tWps.addEventListener('change', (e) => {
-        state.settings.showWaypoints = e.target.checked;
+    const tRadii = document.getElementById('toggle-radii');
+    if(tRadii) tRadii.addEventListener('change', (e) => {
+        state.settings.showRadii = e.target.checked;
         for (const gpx of state.loadedGpx.values()) {
-            if (e.target.checked) state.map.addLayer(gpx.wpLayer);
-            else state.map.removeLayer(gpx.wpLayer);
+            gpx.layers.forEach(l => {
+                if (l instanceof L.Circle) {
+                    if (e.target.checked && state.settings.showWaypoints) state.map.addLayer(l);
+                    else state.map.removeLayer(l);
+                }
+            });
         }
     });
 
@@ -718,12 +815,21 @@ function initUI() {
     });
 
     // Slider live update
-    document.getElementById('s-offroute').addEventListener('input', (e) => {
-        document.getElementById('s-offroute-val').textContent = e.target.value + ' m';
-    });
-    document.getElementById('s-immobile').addEventListener('input', (e) => {
-        document.getElementById('s-immobile-val').textContent = e.target.value + ' min';
-    });
+    const offrouteSlider = document.getElementById('s-offroute');
+    if (offrouteSlider) {
+        offrouteSlider.addEventListener('input', (e) => {
+            const valEl = document.getElementById('s-offroute-val');
+            if (valEl) valEl.textContent = e.target.value + ' m';
+        });
+    }
+
+    const immobileSlider = document.getElementById('s-immobile');
+    if (immobileSlider) {
+        immobileSlider.addEventListener('input', (e) => {
+            const valEl = document.getElementById('s-immobile-val');
+            if (valEl) valEl.textContent = e.target.value + ' min';
+        });
+    }
 
     // Refresh participant list periodically (time since last update)
     setInterval(renderParticipantList, 30000);
@@ -811,21 +917,56 @@ async function fetchGPXLibrary() {
         }
         container.innerHTML = list.map(g => {
             const isLoaded = state.loadedGpx.has(g.id);
-            return `<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer;">
-                <input type="checkbox" onchange="window.toggleLibraryGPX(${g.id}, this.checked)" ${isLoaded ? 'checked' : ''}>
-                🗺️ ${g.name}
-            </label>`;
+            return `<div class="gpx-item">
+                <input type="checkbox" onchange="window.toggleLibraryGPX('${g.id}', this.checked)" ${isLoaded ? 'checked' : ''}>
+                <span class="gpx-name" title="Cliquez pour centrer" onclick="window.centerOnGPX('${g.id}')">🗺️ ${g.name}</span>
+                <button class="btn-icon-del" onclick="window.confirmDeleteGPX('${g.id}', '${g.name.replace(/'/g, "\\'")}')" title="Supprimer définitivement">🗑️</button>
+            </div>`;
         }).join('');
     } catch(e) {}
+}
+
+window.centerOnGPX = function(id) {
+    const gpx = state.loadedGpx.get(parseInt(id) || id);
+    if (gpx) {
+        const bounds = L.latLngBounds([]);
+        gpx.layers.forEach(l => {
+            if (l.getBounds) bounds.extend(l.getBounds());
+            else if (l.getLatLng) bounds.extend(l.getLatLng());
+        });
+        if (bounds.isValid()) {
+            state.map.fitBounds(bounds, { padding: [40, 40] });
+        }
+    } else {
+        showToast('Chargez d\'abord la trace pour centrer', 'info');
+    }
 }
 
 window.toggleLibraryGPX = async function(id, checked) {
     if (checked) {
         await loadGPXFromServer(id);
     } else {
-        unloadGPX(id);
+        unloadGPX(parseInt(id));
     }
     fetchGPXLibrary();
+}
+
+window.confirmDeleteGPX = function(id, name) {
+    // Check if we are in an automated test environment
+    if (window.isAutomatedTest || confirm(`Supprimer définitivement la trace "${name}" ?`)) {
+        deleteGPXFromServer(id);
+    }
+}
+
+async function deleteGPXFromServer(id) {
+    try {
+        const res = await fetch('/api/gpx/' + id, { method: 'DELETE' });
+        if (res.ok) {
+            unloadGPX(parseInt(id));
+            fetchGPXLibrary();
+            showToast('Trace supprimée', 'success');
+        }
+    } catch(e) { showToast('Erreur suppression', 'error'); }
 }
 
 async function loadGPXFromServer(id) {
@@ -850,4 +991,67 @@ function uploadGPX(name, data) {
         fetchGPXLibrary();
     })
     .catch(console.error);
+}
+
+window.confirmDeletePilot = function(id, name) {
+    if (window.isAutomatedTest || confirm(`Supprimer le pilote "${name}" de cette session ?`)) {
+        console.log("ConfirmPilotDelete for:", id);
+        deleteParticipantFromServer(id.toString());
+    }
+}
+
+async function deleteParticipantFromServer(id) {
+    try {
+        console.log("Deleting participant from server or local:", id);
+        const res = await fetch('/api/participants/' + id, { method: 'DELETE' });
+        if (res.ok || res.status === 404) {
+            // Remove locally even if 404 (might be a simulation pilot)
+            console.log(res.ok ? "Server deletion OK" : "Pilot not on server (404), removing locally");
+            removeParticipant(id);
+            if (state.simulation) {
+                // Also remove from simulation engine if applicable
+                state.simulation.participants = state.simulation.participants.filter(p => p.id !== id);
+            }
+            showToast('Pilote supprimé', 'success');
+        } else {
+            console.error("Deletion failed for:", id, "Status:", res.status);
+            showToast('Erreur suppression', 'error');
+        }
+    } catch(e) { 
+        console.error("Delete pilot error:", e);
+        showToast('Erreur suppression', 'error'); 
+    }
+}
+
+function removeParticipant(id) {
+    const p = state.participants.get(id);
+    if (p) {
+        state.map.removeLayer(p.marker);
+        if (p.trail) state.map.removeLayer(p.trail);
+        state.participants.delete(id);
+        renderParticipantList();
+        updateStats();
+    }
+}
+
+function updatePilotTraces() {
+    if (!state.settings || !state.settings.showPilotTraces) {
+        state.participants.forEach(p => {
+            if (p.trail) { state.map.removeLayer(p.trail); p.trail = null; }
+        });
+        return;
+    }
+    
+    state.participants.forEach((p, id) => {
+        if (p.data.history && p.data.history.length > 1) {
+            const latlngs = p.data.history.map(h => [h.lat, h.lng]);
+            if (!p.trail) {
+                p.trail = L.polyline(latlngs, {
+                    color: p.data.color || '#3b82f6', weight: 2, opacity: 0.6, dashArray: '5, 5'
+                }).addTo(state.map);
+            } else {
+                p.trail.setLatLngs(latlngs);
+            }
+        }
+    });
 }

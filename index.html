@@ -64,6 +64,12 @@
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="toggle-waypoints" checked> Zones OpenRally (Waypoints)
         </label>
+        <label id="radii-toggle-row" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:14px;opacity:0.8;font-size:10px;">
+          <input type="checkbox" id="toggle-radii" checked> Afficher les rayons
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="toggle-pilot-traces"> Afficher trajectoires pilotes
+        </label>
       </div>
 
       <!-- Stats -->
@@ -173,13 +179,24 @@
         </div>
 
         <div class="form-group">
-          <label>Immobilité</label>
+          <label>Immobilité prolongée</label>
           <div class="range-row">
-            <input type="range" id="s-immobile" min="1" max="30" step="1" />
+            <input type="range" id="s-immobile" min="1" max="60" step="1" value="5" />
             <span class="range-val" id="s-immobile-val">5 min</span>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
-            Alerte si un pilote connecté ne bouge pas depuis X minutes
+            Alerte si un pilote ne bouge plus pendant plus de X minutes
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Intervalle Log Position</label>
+          <div class="range-row">
+            <input type="range" id="s-log-interval" min="2" max="30" step="1" value="10" />
+            <span class="range-val" id="s-log-interval-val">10 s</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Précision du tracé historique des pilotes (2s à 30s)
           </div>
         </div>
       </div>
@@ -203,6 +220,10 @@
         <div class="toggle-row">
           <span class="toggle-label">Démarrer en mode simulation</span>
           <label class="toggle"><input type="checkbox" id="s-simmode" /><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Afficher les rayons par défaut</span>
+          <label class="toggle"><input type="checkbox" id="s-show-radii" checked /><span class="toggle-slider"></span></label>
         </div>
         <div class="info-box" style="margin-top:8px">
           Le mode simulation génère 5 pilotes fictifs qui suivent (et dévient de) la trace. Idéal pour tester les
@@ -268,12 +289,12 @@
 
   <!-- ── Scripts (order matters) ─────────────────────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/geo.js?v=1"></script>
-  <script src="js/gpx.js?v=1"></script>
-  <script src="js/alerts.js?v=1"></script>
-  <script src="js/simulation.js?v=1"></script>
+  <script src="js/geo.js?v=2"></script>
+  <script src="js/gpx.js?v=2"></script>
+  <script src="js/alerts.js?v=2"></script>
+  <script src="js/simulation.js?v=2"></script>
   <script src="js/qrcode.min.js"></script>
-  <script src="js/app.js?v=1"></script>
+  <script src="js/app.js?v=2"></script>
 
   <!-- Clock update -->
   <script>

@@ -82,7 +82,23 @@ function parseWaypoints(xmlText) {
             if (!isNaN(lat) && !isNaN(lng)) {
                 let name = 'WP';
                 const nameMatch = innerXml.match(/<name[^>]*>([\s\S]*?)<\/name>/i);
+                const descMatch = innerXml.match(/<desc[^>]*>([\s\S]*?)<\/desc>/i);
+                const cmtMatch  = innerXml.match(/<cmt[^>]*>([\s\S]*?)<\/cmt>/i);
+                
                 if (nameMatch) name = nameMatch[1].trim();
+                
+                // If name is just a number, try to use desc or cmt for more detail
+                if (/^\d+$/.test(name)) {
+                    if (descMatch) name = `${name}: ${descMatch[1].trim()}`;
+                    else if (cmtMatch) name = `${name}: ${cmtMatch[1].trim()}`;
+                } else if (!nameMatch) {
+                    if (descMatch) name = descMatch[1].trim();
+                    else if (cmtMatch) name = cmtMatch[1].trim();
+                }
+
+                let type = '';
+                const typeMatch = innerXml.match(/<type[^>]*>([\s\S]*?)<\/type>/i);
+                if (typeMatch) type = typeMatch[1].trim();
                 
                 let validationRadius = 200; // default 200m
                 let openingRadius = 800;    // default 800m
@@ -116,7 +132,7 @@ function parseWaypoints(xmlText) {
                     }
                 }
 
-                waypoints.push({ lat, lng, name, validationRadius, openingRadius });
+                waypoints.push({ lat, lng, name, type, validationRadius, openingRadius });
             }
         }
     }
