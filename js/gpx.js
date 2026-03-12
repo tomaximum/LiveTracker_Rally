@@ -13,6 +13,8 @@ function parseGPX(xmlText) {
         console.warn('GPX xml parser error, will attempt regex fallback');
     }
 
+    console.log('Parsing GPX content, length:', xmlText.length);
+
     const points = [];
 
     // Track points (most common)
@@ -98,7 +100,43 @@ function parseWaypoints(xmlText) {
 
                 let type = '';
                 const typeMatch = innerXml.match(/<type[^>]*>([\s\S]*?)<\/type>/i);
+                const symMatch  = innerXml.match(/<sym[^>]*>([\s\S]*?)<\/sym>/i);
+                
                 if (typeMatch) type = typeMatch[1].trim();
+                if (typeMatch) type = typeMatch[1].trim();
+                else if (symMatch) type = symMatch[1].trim(); // Fallback to sym
+                
+                // Map OpenRally tags to readable types
+                const orMappings = {
+                    'dz': 'Début Zone (DZ)',
+                    'fz': 'Fin Zone (FZ)',
+                    'wpv': 'WP Validation (WPV)',
+                    'wpm': 'WP Masqué (WPM)',
+                    'wps': 'WP Sécurité (WPS)',
+                    'wpc': 'WP Contrôle (WPC)',
+                    'dss': 'Début Spéciale (DSS)',
+                    'ass': 'Assistance (ASS)'
+                };
+
+                const lowerXml = innerXml.toLowerCase();
+                for (const [tag, label] of Object.entries(orMappings)) {
+                    // Look for tag with or without openrally: prefix, case-insensitive
+                    const regex = new RegExp(`<(openrally:)?${tag}`, 'i');
+                    if (regex.test(innerXml)) {
+                        type = label;
+                        // Special case: Speed limit in DZ/FZ
+                        const speedMatch = innerXml.match(/<openrally:speed[^>]*>([\s\S]*?)<\/openrally:speed>/i);
+                        if (speedMatch) {
+                            type += ` [Max ${speedMatch[1].trim()}]`;
+                        }
+                        console.log(`Found WP Type: ${tag} => ${type} for WP ${name}`);
+                        break;
+                    }
+                }
+                
+                if (!type && (typeMatch || symMatch)) {
+                    console.log(`Using standard Type/Sym: ${type} for WP ${name}`);
+                }
                 
                 let validationRadius = 200; // default 200m
                 let openingRadius = 800;    // default 800m

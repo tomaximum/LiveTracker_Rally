@@ -186,19 +186,22 @@ function loadGPX(xmlText, filename, gpxId = null) {
             // Validation Circle (Physical boundary)
             const validationCircle = L.circle([wp.lat, wp.lng], {
                 color, fillColor: color, fillOpacity: 0.1, radius: wp.validationRadius, weight: 2
-            }).bindTooltip(wpLabel, { permanent: true, direction: 'top' });
+            });
 
-            // Opening Circle (Visibility boundary)
-            const openingCircle = L.circle([wp.lat, wp.lng], {
-                color, fillColor: 'transparent', dashArray: '5, 10', radius: wp.openingRadius, weight: 1, interactive: false
+            // Permanent Tooltip for labels
+            validationCircle.bindTooltip(wpLabel, {
+                permanent: true,
+                direction: 'top',
+                className: 'wp-tooltip',
+                offset: [0, -10]
             });
 
             if (state.settings.showWaypoints !== false) {
                 validationCircle.addTo(gpxInfo.wpLayer);
-                openingCircle.addTo(gpxInfo.wpLayer);
             }
             
-            gpxInfo.layers.push(validationCircle, openingCircle);
+            gpxInfo.layers.push(validationCircle);
+            // Removed: openingCircle (visibility boundary) as requested
         });
 
         if (state.settings.showWaypoints !== false) {
@@ -262,33 +265,26 @@ function createWaypointIcon(emoji, color) {
     });
 }
 
-/* ── Demo GPX (Col de Turini, a classic rally route) ──────────────────────── */
+/* ── Demo GPX (User-provided project GPX) ──────────────────────── */
 function loadDemoGPX() {
-    // Generate a synthetic rally-style GPX (Sisteron area)
-    const startLat = 44.197, startLng = 5.937;
-    const points = generateSyntheticRoute(startLat, startLng, 80, 120);
-    state.routePoints = points;
+    const filename = 'AxeQuad RoadBook - Formation RB 25k v26.03.08 (TerraPirata).gpx';
+    console.log("Loading user GPX for simulation:", filename);
 
-    if (state.routeLayer) state.map.removeLayer(state.routeLayer);
-    const latlngs = points.map(p => [p.lat, p.lng]);
-
-    L.polyline(latlngs, { color: 'rgba(245,158,11,0.25)', weight: 10, lineCap: 'round' }).addTo(state.map);
-    state.routeLayer = L.polyline(latlngs, { color: '#f59e0b', weight: 4, lineCap: 'round' }).addTo(state.map);
-
-    L.marker(latlngs[0], { icon: createWaypointIcon('🏁', '#10b981') }).addTo(state.map);
-    L.marker(latlngs[latlngs.length - 1], { icon: createWaypointIcon('🏁', '#ef4444') }).addTo(state.map);
-
-    state.map.fitBounds(state.routeLayer.getBounds(), { padding: [60, 60] });
-    updateRouteStats(points);
-
-    const dropEl = document.getElementById('gpx-drop');
-    dropEl.classList.add('loaded');
-    dropEl.querySelector('.drop-icon').textContent = '🗺️';
-    dropEl.querySelector('.drop-text').textContent = 'Trace démo — Alpes du Sud';
-    dropEl.querySelector('.drop-hint').textContent = `${points.length} points · mode simulation`;
-
-    // Start simulation
-    startSimulation();
+    fetch(filename)
+        .then(response => {
+            if (!response.ok) throw new Error('Could not load ' + filename);
+            return response.text();
+        })
+        .then(xmlText => {
+            loadGPX(xmlText, filename, -1);
+            // Simulation will start automatically if settings.simMode is true
+            // but we call it here to be sure if manually triggered
+            startSimulation();
+        })
+        .catch(err => {
+            console.error('Erreur chargement GPX simulation:', err);
+            showToast('Erreur chargement GPX simulation', 'error');
+        });
 }
 
 function generateSyntheticRoute(startLat, startLng, numPoints, segmentMetres) {
@@ -332,9 +328,9 @@ function updateParticipant(data) {
     const lastPoint = history.length > 0 ? history[history.length - 1] : null;
     
     // Only add to history if moved significantly or first point
-    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 2) {
+    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 1) { // Reduced threshold slightly for smoother lines
         history.push({ lat, lng, ts: now });
-        if (history.length > 100) history.shift(); // Limit history size
+        if (history.length > 5000) history.shift(); // Increased to 5000 points
     }
 
     // Calculate speed if missing and we have enough history
@@ -1115,7 +1111,7 @@ function updatePilotTraces() {
             const latlngs = p.data.history.map(h => [h.lat, h.lng]);
             if (!p.trail) {
                 p.trail = L.polyline(latlngs, {
-                    color: p.data.color || '#3b82f6', weight: 2, opacity: 0.6, dashArray: '5, 5'
+                    color: p.data.color || '#3b82f6', weight: 1.5, opacity: 0.8
                 }).addTo(state.map);
             } else {
                 p.trail.setLatLngs(latlngs);
