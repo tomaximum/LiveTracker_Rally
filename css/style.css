@@ -1003,7 +1003,19 @@ input:checked+.toggle-slider::before {
   scrollbar-color: var(--border-bright) transparent;
 }
 
-.btn-icon-del-pilot {
+.participant-card {
+    position: relative;
+    padding-right: 12px !important;
+}
+
+.p-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.btn-icon-del-pilot,
+.btn-icon-v {
     background: none;
     border: none;
     cursor: pointer;
@@ -1011,19 +1023,20 @@ input:checked+.toggle-slider::before {
     padding: 4px;
     opacity: 0.5;
     transition: opacity 0.2s, transform 0.2s;
-    margin-left: 8px;
 }
-.btn-icon-del-pilot:hover {
+
+.btn-icon-del-pilot:hover,
+.btn-icon-v:hover {
     opacity: 1;
     transform: scale(1.2);
 }
-.participant-card {
-    position: relative;
-    padding-right: 40px !important;
+
+.participant-card.hidden-pilot {
+    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.2);
+    border-style: dashed;
 }
-.btn-icon-del-pilot {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-}
+
+.participant-card.hidden-pilot .p-avatar::after {
+    border-style: dashed;
+}

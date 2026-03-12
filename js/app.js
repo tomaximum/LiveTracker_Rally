@@ -314,32 +314,89 @@ function generateSyntheticRoute(startLat, startLng, numPoints, segmentMetres) {
 
 /* ── Participant Rendering ──────────────────────────────────────────────────── */
 function updateParticipant(data) {
-    const { id, name, lat, lng, color, avatar, displaySpeed, lastMoved, stopped } = data;
+    const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
+    let { displaySpeed, history, hidden } = data;
+
+    // Load existing participant data if available
+    const existingP = state.participants.get(id);
+    if (existingP) {
+        history = history || existingP.data.history || [];
+        hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
+    } else {
+        history = history || [];
+        hidden = (hidden !== undefined) ? hidden : false;
+    }
+
+    // Update history
+    const now = Date.now();
+    const lastPoint = history.length > 0 ? history[history.length - 1] : null;
+    
+    // Only add to history if moved significantly or first point
+    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 2) {
+        history.push({ lat, lng, ts: now });
+        if (history.length > 100) history.shift(); // Limit history size
+    }
+
+    // Calculate speed if missing and we have enough history
+    if (displaySpeed === undefined || displaySpeed === null) {
+        if (history.length >= 2) {
+            const p1 = history[history.length - 2];
+            const p2 = history[history.length - 1];
+            const dist = haversineDistance(p1, p2);
+            const timeDiff = (p2.ts - p1.ts) / 1000; // seconds
+            if (timeDiff > 0) {
+                displaySpeed = Math.round((dist / timeDiff) * 3.6);
+            } else {
+                displaySpeed = 0;
+            }
+        } else {
+            displaySpeed = 0;
+        }
+    }
+
+    const participantData = { 
+        ...data, 
+        lat, lng, 
+        displaySpeed, 
+        lastMoved: lastMoved || now, 
+        stopped, 
+        history, 
+        hidden 
+    };
 
     // Check alerts
     if (state.alertEngine && state.routePoints.length > 0) {
-        state.alertEngine.check(data, state.routePoints);
+        state.alertEngine.check(participantData, state.routePoints);
     }
 
     const status = state.alertEngine ? state.alertEngine.getWorstStatus(id) : 'ok';
+    participantData.status = status;
 
-    if (state.participants.has(id)) {
+    if (existingP) {
         // Update existing marker
-        const p = state.participants.get(id);
-        p.marker.setLatLng([lat, lng]);
-        p.data = { ...p.data, lat, lng, displaySpeed, lastMoved, stopped, status };
-        updateMarkerStyle(p, status);
+        existingP.data = participantData;
+        
+        if (hidden) {
+            if (state.map.hasLayer(existingP.marker)) state.map.removeLayer(existingP.marker);
+            if (existingP.trail && state.map.hasLayer(existingP.trail)) state.map.removeLayer(existingP.trail);
+        } else {
+            existingP.marker.setLatLng([lat, lng]);
+            if (!state.map.hasLayer(existingP.marker)) existingP.marker.addTo(state.map);
+            updateMarkerStyle(existingP, status);
+        }
     } else {
         // Create new marker
         const { marker, el } = createParticipantMarker({ id, lat, lng, color, avatar, name });
-        marker.bindPopup(() => buildPopup(state.participants.get(id)?.data || data), {
+        marker.bindPopup(() => buildPopup(state.participants.get(id)?.data || participantData), {
             closeButton: false, className: 'p-popup'
         });
-        marker.addTo(state.map);
+        
+        if (!hidden) marker.addTo(state.map);
+        
         marker.on('click', () => focusParticipant(id));
         state.participants.set(id, {
             marker, el,
-            data: { id, name, lat, lng, color, avatar, displaySpeed, lastMoved, stopped, status }
+            data: participantData
         });
     }
 
@@ -348,7 +405,7 @@ function updateParticipant(data) {
         state.renderListTimeout = setTimeout(() => {
             renderParticipantList();
             updateStats();
-            updatePilotTraces(); // New: update trajectories
+            updatePilotTraces();
             state.renderListTimeout = null;
         }, 1000); // Max once per second
     }
@@ -422,7 +479,7 @@ function renderParticipantList() {
 
     container.innerHTML = '';
     parts.forEach(({ data, marker }) => {
-        const { id, name, avatar, color, displaySpeed, lastMoved, status } = data;
+        const { id, name, avatar, color, displaySpeed, lastMoved, status, hidden } = data;
         const sinceMin = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
         const statusLabel = status === 'immobile' ? '🔴 Immobile'
             : status === 'off_route' ? '⚠️ Hors trace'
@@ -432,7 +489,7 @@ function renderParticipantList() {
                 : 'ok';
 
         const card = document.createElement('div');
-        card.className = `participant-card${state.focusedId === id ? ' focused' : ''}${status !== 'ok' ? ' alert-' + status : ''}`;
+        card.className = `participant-card${state.focusedId === id ? ' focused' : ''}${status !== 'ok' ? ' alert-' + status : ''}${hidden ? ' hidden-pilot' : ''}`;
         card.innerHTML = `
       <div class="p-avatar" style="background:${color}22;border-color:${color}">
         ${avatar || '🏍️'}
@@ -445,11 +502,22 @@ function renderParticipantList() {
         </div>
       </div>
       <div class="p-status ${statusClass}">${statusLabel}</div>
-      <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>`;
+      <div class="p-actions">
+        <button class="btn-icon-v" onclick="event.stopPropagation(); window.toggleParticipantVisibility('${id}')" title="${hidden ? 'Afficher' : 'Masquer'}">${hidden ? '👁️‍🗨️' : '👁️'}</button>
+        <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>
+      </div>`;
         card.addEventListener('click', () => focusParticipant(id));
         container.appendChild(card);
     });
 }
+
+window.toggleParticipantVisibility = function(id) {
+    const p = state.participants.get(id);
+    if (p) {
+        p.data.hidden = !p.data.hidden;
+        updateParticipant(p.data);
+    }
+};
 
 /* ── Stats ──────────────────────────────────────────────────────────────────── */
 function updateStats() {

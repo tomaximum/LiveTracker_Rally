@@ -178,7 +178,9 @@ def handle_ws_message(msg):
                 # Detect movement
                 moved = (existing.get("lat") != p.get("lat") or
                          existing.get("lng") != p.get("lng"))
+                
                 p["connectedAt"] = existing.get("connectedAt", now_ms)
+                p["lastMoved"] = now_ms # Fixed: ensure lastMoved is present
                 participants[pid] = {**existing, **p}
                 print(f"[WS] Participant mis à jour : {pid}. Total : {len(state['participants'])}")
             broadcast({"type": "position", "participant": participants[pid]})
