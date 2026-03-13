@@ -8,6 +8,7 @@ const ASSETS = [
   './js/gpx.js',
   './js/alerts.js',
   './js/simulation.js',
+  './js/telegram-client.js',
   './js/qrcode.min.js',
   './icons/icon-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',

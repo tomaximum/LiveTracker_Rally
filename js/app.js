@@ -665,7 +665,7 @@ function connectWS(url) {
             setTimeout(() => { if (state.wsUrl) connectWS(state.wsUrl); }, 5000);
         };
     } catch (err) {
-        console.error('[WS] Erreur lors de la création du WebSocket :', err);
+        // Silencieusement ignorer les erreurs WebSocket en mode autonome (sans serveur PC)
     }
 }
 
@@ -939,6 +939,21 @@ function initUI() {
     // Refresh participant list periodically (time since last update)
     setInterval(renderParticipantList, 30000);
     renderAlertList();
+
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.getElementById('sidebar');
+    if (menuBtn && sidebar) {
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('mobile-open');
+        });
+        // Auto-close on small screens
+        sidebar.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768 && !e.target.closest('#gpx-drop')) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
+    }
 }
 
 function openSettingsModal() {
