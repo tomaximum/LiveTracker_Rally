@@ -19,3 +19,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Secrets
+telegram_token.txt
