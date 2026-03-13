@@ -26,8 +26,10 @@ const state = {
         showRadii: true,
         showTraces: true,
         showWaypoints: true,
-        showPilotTraces: true
+        showPilotTraces: true,
+        telegramToken: ''
     },
+    telegramClient: null,
     renderListTimeout: null,
     isSharing: false,
     watchId: null,
@@ -72,6 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             loadDemoGPX();
         }, 600);
+    }
+
+    // Start Telegram Client if token exists (Autonomous Mode)
+    if (state.settings.telegramToken) {
+        initTelegramClient(state.settings.telegramToken);
     }
 });
 
@@ -662,6 +669,17 @@ function connectWS(url) {
     }
 }
 
+/* ── Telegram Client (Autonomous) ─────────────────────────────────────────── */
+function initTelegramClient(token) {
+    if (state.telegramClient) state.telegramClient.stop();
+    
+    state.telegramClient = new TelegramClient(token, (participant) => {
+        updateParticipant(participant);
+    });
+    
+    state.telegramClient.start();
+}
+
 
 /* ── Toast ──────────────────────────────────────────────────────────────────── */
 function showToast(msg, type = 'success', subMsg = '') {
@@ -710,6 +728,7 @@ function applySettings() {
     document.getElementById('s-notif').checked = state.settings.browserNotif;
     document.getElementById('s-simmode').checked = state.settings.simMode;
     document.getElementById('s-show-radii').checked = state.settings.showRadii !== false;
+    document.getElementById('s-token').value = state.settings.telegramToken || '';
 }
 
 function collectSettings() {
@@ -720,6 +739,14 @@ function collectSettings() {
     state.settings.browserNotif = document.getElementById('s-notif').checked;
     state.settings.simMode = document.getElementById('s-simmode').checked;
     state.settings.showRadii = document.getElementById('s-show-radii').checked;
+    state.settings.telegramToken = document.getElementById('s-token').value.trim();
+
+    if (state.settings.telegramToken) {
+        initTelegramClient(state.settings.telegramToken);
+    } else if (state.telegramClient) {
+        state.telegramClient.stop();
+        state.telegramClient = null;
+    }
 
     if (state.alertEngine) {
         state.alertEngine.updateSettings({

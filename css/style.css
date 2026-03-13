@@ -1037,6 +1037,53 @@ input:checked+.toggle-slider::before {
     border-style: dashed;
 }
 
+/* ── Mobile Responsiveness ──────────────────────────────────── */
+@media (max-width: 768px) {
+  #app {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 56px 1fr !important;
+  }
+
+  #sidebar {
+    display: none;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1500;
+    background: var(--bg-secondary);
+  }
+
+  #sidebar.mobile-open {
+    display: flex;
+  }
+
+  #topbar {
+    justify-content: space-between;
+    padding: 0 12px;
+  }
+
+  .topbar-actions .btn-accent span {
+    display: none;
+  }
+
+  #stats-bar {
+    width: 90vw;
+    gap: 15px;
+    padding: 8px 16px;
+    bottom: 20px;
+  }
+
+  .stat-sep {
+    height: 20px;
+  }
+
+  .modal-box {
+    padding: 20px;
+  }
+}
+
 .participant-card.hidden-pilot .p-avatar::after {
     border-style: dashed;
 }

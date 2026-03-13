@@ -12,6 +12,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- App CSS -->
   <link rel="stylesheet" href="css/style.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3b82f6" />
+  <link rel="apple-touch-icon" href="icons/icon-512.png" />
 </head>
 
 <body>
@@ -202,6 +206,14 @@
             Précision du tracé historique des pilotes (2s à 30s)
           </div>
         </div>
+
+        <div class="form-group" id="token-group">
+          <label>Token Telegram (Mode Autonome)</label>
+          <input type="password" id="s-token" placeholder="12345678:ABC-DEF..." style="width:100%;margin-top:5px" />
+          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
+            Requis pour le mode 100% autonome sur mobile.
+          </div>
+        </div>
       </div>
 
       <!-- Notifications -->
@@ -297,7 +309,21 @@
   <script src="js/alerts.js?v=2"></script>
   <script src="js/simulation.js?v=2"></script>
   <script src="js/qrcode.min.js"></script>
+  <script src="js/telegram-client.js?v=2"></script>
   <script src="js/app.js?v=2"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('SW enregistré !', reg.scope);
+        }).catch(err => {
+          console.log('SW échec :', err);
+        });
+      });
+    }
+  </script>
 
   <!-- Clock update -->
   <script>
