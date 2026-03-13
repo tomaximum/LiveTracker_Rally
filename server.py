@@ -56,11 +56,37 @@ def init_db():
 init_db()
 
 state = {
-    "participants": {},  # type: dict
+    "participants": {},  # type: dict {pid: {..., "lastUpdate": ts}}
     "ws_clients": set(), # type: set
     "gpx_points": [],    # type: list
 }
 state_lock = threading.Lock()
+
+def prune_stale_participants():
+    """Remove participants who haven't sent updates for 4 hours"""
+    while True:
+        try:
+            time.sleep(300) # Check every 5 minutes
+            now = int(time.time() * 1000)
+            stale_threshold = 4 * 3600 * 1000 # 4 hours in ms
+            
+            to_remove = []
+            with state_lock:
+                participants = state.get("participants", {})
+                for pid, p in participants.items():
+                    last_upd = p.get("lastUpdate", p.get("lastMoved", 0))
+                    if now - last_upd > stale_threshold:
+                        to_remove.append(pid)
+                
+            for pid in to_remove:
+                print(f"[Pruning] Removing stale participant: {pid}")
+                handle_ws_message({"type": "remove_participant", "id": pid})
+                
+        except Exception as e:
+            print(f"[Pruning] Error: {e}")
+
+prune_thread = threading.Thread(target=prune_stale_participants, daemon=True)
+prune_thread.start()
 
 # ─── Mini WebSocket Server ────────────────────────────────────────────────────
 WS_MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -197,14 +223,28 @@ def handle_ws_message(msg):
                     state["participants"] = participants
                 
                 existing = participants.get(pid, {})
-                # Detect movement
-                moved = (existing.get("lat") != p.get("lat") or
-                         existing.get("lng") != p.get("lng"))
+                p["lastUpdate"] = now_ms
+                
+                # Ensure lat/lng are floats for comparison
+                try:
+                    curr_lat = float(p.get("lat", 0))
+                    curr_lng = float(p.get("lng", 0))
+                    prev_lat = float(existing.get("lat", 0))
+                    prev_lng = float(existing.get("lng", 0))
+                    moved = (curr_lat != prev_lat or curr_lng != prev_lng)
+                except (ValueError, TypeError):
+                    moved = True
                 
                 p["connectedAt"] = existing.get("connectedAt", now_ms)
-                p["lastMoved"] = now_ms # Fixed: ensure lastMoved is present
+                
+                if moved or "lastMoved" not in existing:
+                    p["lastMoved"] = now_ms
+                    print(f"[WS] Mouvement détecté pour {pid} ({p.get('name')})")
+                else:
+                    p["lastMoved"] = existing.get("lastMoved", now_ms)
+
                 participants[pid] = {**existing, **p}
-                print(f"[WS] Participant mis à jour : {pid}. Total : {len(state['participants'])}")
+                print(f"[WS] Participant mis à jour : {pid} ({p.get('name')}). LastMoved: {p['lastMoved']}. LastUpd: {p['lastUpdate']}")
             broadcast({"type": "position", "participant": participants[pid]})
     elif t == "add_participant":
         p = msg.get("participant", {})
@@ -213,6 +253,7 @@ def handle_ws_message(msg):
             now = int(time.time() * 1000)
             p["connectedAt"] = now
             p["lastMoved"] = now
+            p["lastUpdate"] = now
             with state_lock:
                 participants = state["participants"]
                 if not isinstance(participants, dict):
@@ -430,6 +471,13 @@ def telegram_polling(token):
     
     last_poll_log = time.time()
 
+    # Clear any active webhooks to avoid 409 Conflict
+    try:
+        print(f"[Telegram] Nettoyage des webhooks avant polling...")
+        urllib.request.urlopen(f"{api}/deleteWebhook", timeout=10)
+    except Exception as e:
+        print(f"[Telegram] Erreur lors du nettoyage des webhooks : {e}")
+
     while True:
         try:
             params = {
@@ -445,8 +493,8 @@ def telegram_polling(token):
                 if data.get("result"):
                     print(f"[Telegram] Raw response (partial): {raw_data[:200]}")
                 
-                if time.time() - last_poll_log > 60:
-                    print(f"[Telegram] [{os.getpid()}] Polling... (dernier offset: {offset})")
+                if time.time() - last_poll_log > 30:
+                    print(f"[Telegram] Polling en cours... (offset: {offset})")
                     last_poll_log = time.time()
                 # print(f"[Telegram] Raw response: {raw_data[:100]}")
 
@@ -491,6 +539,10 @@ def telegram_polling(token):
                 }
                 print(f"[Telegram] Position : {name} ({uid}) -> {loc['latitude']}, {loc['longitude']}")
                 handle_ws_message({"type": "position", "participant": participant})
+            
+            if not data.get("result"):
+                # Silently ignore empty results
+                pass
 
         except Exception as e:
             print(f"[Telegram] Erreur polling : {e}")
@@ -531,12 +583,13 @@ def main():
     token = match.group(1) if match else ""
 
     if token:
+        print(f"[Main] Token valide extrait : {token[:10]}...{token[-4:]}")
         tg = threading.Thread(target=telegram_polling, args=(token,), daemon=True)
         tg.start()
         print("  ✅  Bot Telegram actif")
     else:
-        print("  ℹ️   Bot Telegram non configuré (optionnel)")
-        print("       → Créez telegram_token.txt avec votre token")
+        print("  ❌  ERREUR : Token Telegram invalide ou non trouvé")
+        print("       → Vérifiez que telegram_token.txt contient bien votre token")
 
     # Open browser
     print(f"\n  🌐  Ouverture dans le navigateur...")

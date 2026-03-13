@@ -442,14 +442,19 @@ function updateMarkerStyle(p, status) {
 function buildPopup(data) {
     if (!data) return '';
     const { name, displaySpeed, lastMoved, lat, lng, status } = data;
-    const sinceMin = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
+    const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
+    const lastUpdate = data.lastUpdate || lastMoved;
+    const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
+    
     const statusLabel = status === 'immobile' ? '🔴 Immobile'
         : status === 'off_route' ? '⚠️ Hors trace'
             : '✅ OK';
+            
     return `<div class="popup-name">${data.avatar || '🏍️'} ${name}</div>
     <div class="popup-row"><span>Vitesse</span><span class="popup-val">${displaySpeed ?? '—'} km/h</span></div>
     <div class="popup-row"><span>Statut</span><span class="popup-val">${statusLabel}</span></div>
-    <div class="popup-row"><span>Dernière MAJ</span><span class="popup-val">il y a ${sinceMin} min</span></div>
+    <div class="popup-row"><span>Mouvement</span><span class="popup-val">il y a ${sinceMinMove} min</span></div>
+    <div class="popup-row"><span>Connexion</span><span class="popup-val">il y a ${sinceMinUpdate} min</span></div>
     <div class="popup-row"><span>Position</span><span class="popup-val">${lat?.toFixed(4)}, ${lng?.toFixed(4)}</span></div>`;
 }
 
@@ -479,7 +484,10 @@ function renderParticipantList() {
     container.innerHTML = '';
     parts.forEach(({ data, marker }) => {
         const { id, name, avatar, color, displaySpeed, lastMoved, status, hidden } = data;
-        const sinceMin = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
+        const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
+        const lastUpdate = data.lastUpdate || lastMoved;
+        const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
+
         const statusLabel = status === 'immobile' ? '🔴 Immobile'
             : status === 'off_route' ? '⚠️ Hors trace'
                 : '✅ En route';
@@ -497,7 +505,7 @@ function renderParticipantList() {
         <div class="p-name">${name}</div>
         <div class="p-meta">
           <span class="p-speed">${displaySpeed ?? '—'} km/h</span>
-          <span class="p-time">MAJ ${sinceMin}min</span>
+          <span class="p-time" title="Mouvement / Connexion">⏳ ${sinceMinMove}m / 📡 ${sinceMinUpdate}m</span>
         </div>
       </div>
       <div class="p-status ${statusClass}">${statusLabel}</div>
