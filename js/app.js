@@ -124,10 +124,92 @@ function rebuildGlobalRoute() {
         state.waypoints.push(...gpx.waypoints);
     }
     updateRouteStats(state.routePoints);
-/* ── Simulation ─────────────────────────────────────────────────────────────── */
-function startSimulation() { /* Removed */ }
-function stopSimulation() { /* Removed */ }
-function loadDemoGPX() { /* Removed */ }
+}
+
+function updateRouteStats(route) {
+    let dist = 0, eleGain = 0;
+    if (route && route.length > 1) {
+        for (let i = 1; i < route.length; i++) {
+            if (typeof haversineDistance === 'function') {
+                dist += haversineDistance(route[i-1], route[i]);
+            }
+            if (route[i].ele !== undefined && route[i-1].ele !== undefined) {
+                const diff = route[i].ele - route[i-1].ele;
+                if (diff > 0) eleGain += diff;
+            }
+        }
+    }
+    const dEl = document.getElementById('stat-dist');
+    const eEl = document.getElementById('stat-ele');
+    if (dEl) dEl.textContent = dist < 2 ? (dist*1000).toFixed(0) + ' m' : dist.toFixed(1) + ' km';
+    if (eEl) eEl.textContent = eleGain.toFixed(0) + ' m';
+}
+
+function loadGPX(xmlText, name, id) {
+    try {
+        if (!state.map) { console.error('Map is null'); return; }
+        
+        const existing = state.loadedGpx.get(id) || state.loadedGpx.get(parseInt(id));
+        if (existing) unloadGPX(id);
+        
+        const parsed = parseGPX(xmlText);
+        console.log(`[GPX] Loaded ${name} (${parsed.route.length} pts, ${parsed.waypoints.length} wps)`);
+
+        const latlngs = parsed.route.map(p => [p.lat, p.lng]);
+        const routeLayer = L.polyline(latlngs, {
+            color: '#3b82f6', weight: 4, opacity: 0.8
+        }).addTo(state.map);
+
+        const wpLayer = L.layerGroup().addTo(state.map);
+        parsed.waypoints.forEach(wp => {
+            const marker = L.circle([wp.lat, wp.lng], {
+                radius: wp.validationRadius || 200,
+                color: '#10b981', fillColor: '#10b981', fillOpacity: 0.2, dashArray: '5,5'
+            }).addTo(wpLayer);
+            
+            let popupContent = `<b>${wp.name}</b>`;
+            if (wp.type) popupContent += `<br>${wp.type}`;
+            if (wp.km) popupContent += `<br>${wp.km}`;
+            
+            marker.bindTooltip(popupContent);
+        });
+
+        state.loadedGpx.set(id, {
+            id, name,
+            routePoints: parsed.route,
+            waypoints: parsed.waypoints,
+            layers: [routeLayer],
+            wpLayer: wpLayer,
+            color: '#3b82f6',
+            visible: true
+        });
+
+        rebuildGlobalRoute();
+        
+        if (typeof centerOnGPX === 'function') {
+            centerOnGPX(id);
+        } else if (routeLayer.getBounds) {
+            state.map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+        }
+        
+        if (typeof fetchGPXLibrary === 'function') fetchGPXLibrary();
+        showToast(`Trace "${name}" chargée`);
+    } catch (e) {
+        console.error('[GPX] Error loading:', e);
+        showToast('Erreur chargement GPX', 'error');
+    }
+}
+
+function unloadGPX(id) {
+    const gpx = state.loadedGpx.get(id);
+    if (gpx) {
+        if (gpx.layers) gpx.layers.forEach(l => { if (state.map && state.map.hasLayer(l)) state.map.removeLayer(l); });
+        if (gpx.wpLayer && state.map && state.map.hasLayer(gpx.wpLayer)) state.map.removeLayer(gpx.wpLayer);
+        state.loadedGpx.delete(id);
+        rebuildGlobalRoute();
+        if (typeof fetchGPXLibrary === 'function') fetchGPXLibrary();
+    }
+}
 function updateParticipant(data) {
     const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
     let { displaySpeed, history, hidden } = data;
@@ -327,6 +409,7 @@ function renderParticipantList() {
       <div class="p-status ${statusClass}">${statusLabel}</div>
       <div class="p-actions">
         <button class="btn-icon-v" onclick="event.stopPropagation(); window.toggleParticipantVisibility('${id}')" title="${hidden ? 'Afficher' : 'Masquer'}">${hidden ? '👁️‍🗨️' : '👁️'}</button>
+        <button class="btn-icon-v" onclick="event.stopPropagation(); window.renameParticipant('${id}', '${name.replace(/'/g, "\\'")}')" title="Renommer">✏️</button>
         <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>
       </div>`;
         card.addEventListener('click', () => focusParticipant(id));
@@ -339,6 +422,27 @@ window.toggleParticipantVisibility = function(id) {
     if (p) {
         p.data.hidden = !p.data.hidden;
         updateParticipant(p.data);
+    }
+};
+
+window.renameParticipant = function(id, name) {
+    const newName = prompt('Nouveau nom pour le pilote :', name);
+    if (newName && newName.trim() !== '') {
+        const p = state.participants.get(id);
+        if (p) {
+            p.data.name = newName.trim();
+            // Rebuild popup content
+            if (p.marker) {
+                p.marker.bindPopup(() => buildPopup(p.data), {
+                    closeButton: false, className: 'p-popup'
+                });
+            }
+            if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                state.ws.send(JSON.stringify({ type: 'rename_participant', id: id, name: newName.trim() }));
+            }
+            renderParticipantList();
+            showToast(`Pilote renommé en ${newName.trim()}`);
+        }
     }
 };
 
@@ -411,8 +515,11 @@ function startSimulation() {
     };
 
     state.simulation.start();
-    document.getElementById('sim-badge').classList.add('visible');
-    document.getElementById('btn-sim').classList.add('active');
+    const badge = document.getElementById('sim-badge');
+    if (badge) badge.classList.add('visible');
+    
+    const btn = document.getElementById('btn-sim');
+    if (btn) btn.classList.add('active');
 }
 
 function stopSimulation() {
@@ -430,8 +537,12 @@ function stopSimulation() {
     renderAlertList();
     renderParticipantList();
     updateStats();
-    document.getElementById('sim-badge').classList.remove('visible');
-    document.getElementById('btn-sim').classList.remove('active');
+    
+    const badge = document.getElementById('sim-badge');
+    if (badge) badge.classList.remove('visible');
+    
+    const btn = document.getElementById('btn-sim');
+    if (btn) btn.classList.remove('active');
 }
 
 /* ── WebSocket (Live mode) ──────────────────────────────────────────────────── */
@@ -527,28 +638,75 @@ function applySettings() {
     const orSlider = document.getElementById('s-offroute');
     const immSlider = document.getElementById('s-immobile');
     const logSlider = document.getElementById('s-log-interval');
-    if (logSlider) {
-        logSlider.value = state.settings.logInterval || 10;
-        document.getElementById('s-log-interval-val').textContent = logSlider.value + ' s';
-        logSlider.oninput = () => { document.getElementById('s-log-interval-val').textContent = logSlider.value + ' s'; };
+    
+    if (orSlider) {
+        orSlider.value = state.settings.offRouteThresh || 200;
+        const val = document.getElementById('s-offroute-val');
+        if (val) val.textContent = orSlider.value + ' m';
+        orSlider.oninput = () => { if (val) val.textContent = orSlider.value + ' m'; };
+    }
+    
+    if (immSlider) {
+        immSlider.value = state.settings.immobileThresh || 5;
+        const val = document.getElementById('s-immobile-val');
+        if (val) val.textContent = immSlider.value + ' min';
+        immSlider.oninput = () => { if (val) val.textContent = immSlider.value + ' min'; };
     }
 
-    document.getElementById('s-sound').checked = state.settings.soundAlert;
-    document.getElementById('s-notif').checked = state.settings.browserNotif;
-    document.getElementById('s-simmode').checked = state.settings.simMode;
-    document.getElementById('s-show-radii').checked = state.settings.showRadii !== false;
-    document.getElementById('s-token').value = state.settings.telegramToken || '';
+    if (logSlider) {
+        logSlider.value = state.settings.logInterval || 10;
+        const val = document.getElementById('s-log-interval-val');
+        if (val) val.textContent = logSlider.value + ' s';
+        logSlider.oninput = () => { if (val) val.textContent = logSlider.value + ' s'; };
+    }
+
+    const sSound = document.getElementById('s-sound');
+    if (sSound) sSound.checked = state.settings.soundAlert;
+
+    const sNotif = document.getElementById('s-notif');
+    if (sNotif) sNotif.checked = state.settings.browserNotif;
+
+    const sSim = document.getElementById('s-simmode');
+    if (sSim) sSim.checked = state.settings.simMode;
+
+    const sRadii = document.getElementById('s-show-radii');
+    if (sRadii) sRadii.checked = state.settings.showRadii !== false;
+
+    const sToken = document.getElementById('s-token');
+    if (sToken) sToken.value = state.settings.telegramToken || '';
 }
 
 function collectSettings() {
-    state.settings.offRouteThresh = parseInt(document.getElementById('s-offroute').value);
-    state.settings.immobileThresh = parseInt(document.getElementById('s-immobile').value);
-    state.settings.logInterval = parseInt(document.getElementById('s-log-interval').value);
-    state.settings.soundAlert = document.getElementById('s-sound').checked;
-    state.settings.browserNotif = document.getElementById('s-notif').checked;
-    state.settings.simMode = document.getElementById('s-simmode').checked;
-    state.settings.showRadii = document.getElementById('s-show-radii').checked;
-    state.settings.telegramToken = document.getElementById('s-token').value.trim();
+    const orSlider = document.getElementById('s-offroute');
+    if (orSlider) state.settings.offRouteThresh = parseInt(orSlider.value);
+
+    const immSlider = document.getElementById('s-immobile');
+    if (immSlider) state.settings.immobileThresh = parseInt(immSlider.value);
+
+    const logSlider = document.getElementById('s-log-interval');
+    if (logSlider) state.settings.logInterval = parseInt(logSlider.value);
+
+    const sSound = document.getElementById('s-sound');
+    if (sSound) state.settings.soundAlert = sSound.checked;
+
+    const sNotif = document.getElementById('s-notif');
+    if (sNotif) state.settings.browserNotif = sNotif.checked;
+
+    const sSim = document.getElementById('s-simmode');
+    if (sSim) {
+        const wasSim = state.settings.simMode;
+        state.settings.simMode = sSim.checked;
+        if (wasSim !== sSim.checked) {
+            if (sSim.checked) startSimulation();
+            else stopSimulation();
+        }
+    }
+
+    const sRadii = document.getElementById('s-show-radii');
+    if (sRadii) state.settings.showRadii = sRadii.checked;
+
+    const sToken = document.getElementById('s-token');
+    if (sToken) state.settings.telegramToken = sToken.value.trim();
 
     if (state.settings.telegramToken) {
         initTelegramClient(state.settings.telegramToken);
@@ -710,6 +868,9 @@ function initUI() {
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
     document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
+    
+    const clearBtn = document.getElementById('btn-clear-db');
+    if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
     // Participants modal
     document.getElementById('btn-add-pilot').addEventListener('click', openPilotsModal);
@@ -844,23 +1005,67 @@ function closePilotsModal() {
 
 /* ── GPX Library API ────────────────────────────────────────────────────────── */
 async function fetchGPXLibrary() {
-    try {
-        const res = await fetch('/api/gpx');
-        const list = await res.json();
-        const container = document.getElementById('gpx-library-list');
-        if (!container) return;
-        if (list.length === 0) {
-            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace sauvée</div>';
+    const container = document.getElementById('gpx-library-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const isAutonomous = !!state.settings.telegramToken;
+
+    if (isAutonomous) {
+        if (state.loadedGpx.size === 0) {
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace chargée</div>';
             return;
         }
-        // ... (existing map link logic)
-    } catch(e) {
-        // En mode autonome, on ne peut pas lister les traces du serveur
-        const container = document.getElementById('gpx-library-list');
-        if (container) {
-            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Mode Autonome : Traces en mémoire locale uniquement</div>';
+        renderLocalTraces(container);
+    } else {
+        try {
+            const res = await fetch('/api/gpx');
+            const list = await res.json();
+
+            if (list.length === 0 && state.loadedGpx.size === 0) {
+                container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace</div>';
+                return;
+            }
+
+            const serverIds = list.map(item => item.id);
+
+            list.forEach(item => {
+                const isLoaded = state.loadedGpx.has(item.id);
+                const gpxObj = isLoaded ? state.loadedGpx.get(item.id) : null;
+                const styleAttr = isLoaded ? `border-left: 3px solid ${gpxObj.color || '#3b82f6'}` : '';
+
+                container.innerHTML += `
+                    <div class="gpx-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:var(--bg-card);padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
+                        <input type="checkbox" onchange="window.toggleLibraryGPX('${item.id}', this.checked)" ${isLoaded && gpxObj.visible !== false ? 'checked' : ''} title="Afficher/Masquer" />
+                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${item.id}')">${item.name}</span>
+                        ${isLoaded ? `<input type="color" value="${gpxObj.color || '#3b82f6'}" style="width:16px;height:16px;border:none;border-radius:3px;cursor:pointer;padding:0" onchange="window.changeGPXColor('${item.id}', this.value)" />` : ''}
+                        <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="window.confirmDeleteGPX('${item.id}', '${item.name.replace(/'/g, "\\'")}')">🗑️</button>
+                    </div>
+                `;
+            });
+
+            renderLocalTraces(container, serverIds);
+
+        } catch (e) {
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Impossible de charger la bibliothèque</div>';
         }
     }
+}
+
+function renderLocalTraces(container, filterIds = []) {
+    state.loadedGpx.forEach((g, id) => {
+        if (filterIds.includes(parseInt(id)) || filterIds.includes(id) || id.toString().includes('local-')) {
+            const styleAttr = `border-left: 3px solid ${g.color || '#3b82f6'}`;
+            container.innerHTML += `
+                <div class="gpx-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:var(--bg-card);padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
+                    <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" title="Afficher/Masquer" />
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${id}')">${g.name} (Local)</span>
+                    <input type="color" value="${g.color || '#3b82f6'}" style="width:16px;height:16px;border:none;border-radius:3px;cursor:pointer;padding:0" onchange="window.changeGPXColor('${id}', this.value)" />
+                    <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="unloadGPX('${id}')">❌</button>
+                </div>
+            `;
+        }
+    });
 }
 
 window.centerOnGPX = function(id) {
@@ -880,12 +1085,40 @@ window.centerOnGPX = function(id) {
 }
 
 window.toggleLibraryGPX = async function(id, checked) {
-    if (checked) {
-        await loadGPXFromServer(id);
+    const isLoaded = state.loadedGpx.has(id) || (parseInt(id) && state.loadedGpx.has(parseInt(id)));
+    if (isLoaded) {
+        const gpx = state.loadedGpx.get(id) || state.loadedGpx.get(parseInt(id));
+        gpx.visible = checked;
+        if (gpx.layers) {
+            gpx.layers.forEach(l => {
+                if (checked) state.map.addLayer(l);
+                else state.map.removeLayer(l);
+            });
+        }
+        if (gpx.wpLayer) {
+            if (checked) state.map.addLayer(gpx.wpLayer);
+            else state.map.removeLayer(gpx.wpLayer);
+        }
+        rebuildGlobalRoute();
+        fetchGPXLibrary();
     } else {
-        unloadGPX(parseInt(id));
+        if (checked) {
+            await loadGPXFromServer(id);
+        }
     }
-    fetchGPXLibrary();
+}
+
+window.changeGPXColor = function(id, color) {
+    const gpx = state.loadedGpx.get(id) || (parseInt(id) && state.loadedGpx.get(parseInt(id)));
+    if (gpx) {
+        gpx.color = color;
+        if (gpx.layers) {
+            gpx.layers.forEach(l => {
+                if (l.setStyle) l.setStyle({ color: color });
+            });
+        }
+        fetchGPXLibrary(); // Update list indicators
+    }
 }
 
 window.confirmDeleteGPX = function(id, name) {
@@ -970,9 +1203,14 @@ async function deleteParticipantFromServer(id) {
         console.log("Deleting participant from server or local:", id);
         const res = await fetch('/api/participants/' + id, { method: 'DELETE' });
         if (res.ok || res.status === 404) {
-            // Remove locally even if 404 (might be a simulation pilot)
             console.log(res.ok ? "Server deletion OK" : "Pilot not on server (404), removing locally");
             removeParticipant(id);
+        }
+    } catch (err) {
+        console.error("Error deleting participant:", err);
+        // Fallback remove
+        removeParticipant(id);
+    }
 }
 
 function removeParticipant(id) {
@@ -1001,10 +1239,47 @@ function updatePilotTraces() {
                 p.trail = L.polyline(latlngs, {
                     color: p.data.color || '#3b82f6', weight: 1.5, opacity: 0.8
                 }).addTo(state.map);
+                p.trail.on('click', () => focusParticipant(id));
             } else {
                 p.trail.setLatLngs(latlngs);
             }
         }
     });
+}
+
+function clearDatabase() {
+    if (!confirm('Voulez-vous vraiment vider la base de données (Traces et Pilotes) ?')) return;
+
+    const isAutonomous = !!state.settings.telegramToken;
+    if (isAutonomous) {
+        // Mode Autonome : Reset local memory state
+        state.participants.forEach(p => state.map.removeLayer(p.marker));
+        state.participants.clear();
+        state.loadedGpx.forEach(g => {
+            g.layers.forEach(l => state.map.removeLayer(l));
+            if (g.wpLayer) state.map.removeLayer(g.wpLayer);
+        });
+        state.loadedGpx.clear();
+        state.routePoints = [];
+        state.waypoints = [];
+        if (state.routeLayer) state.map.removeLayer(state.routeLayer);
+        renderParticipantList();
+        renderAlertList();
+        updateStats();
+        fetchGPXLibrary();
+        showToast('Données locales effacées', 'success');
+        closeSettingsModal();
+    } else {
+        // Mode Serveur : API call
+        fetch('/api/clear', { method: 'POST' })
+            .then(res => {
+                if (res.ok) {
+                    showToast('Base de données serveur vidée', 'success');
+                    location.reload();
+                } else {
+                    showToast('Erreur serveur lors de la suppression', 'error');
+                }
+            }).catch(() => showToast('Erreur réseau', 'error'));
+    }
 }
 

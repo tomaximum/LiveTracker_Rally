@@ -89,6 +89,15 @@ function parseWaypoints(xmlText) {
                 
                 if (nameMatch) name = nameMatch[1].trim();
                 
+                let km = '';
+                // Extract KM from name, desc, or cmt
+                const kmRegex = /(\d+[.,]\d+|\d+)\s*(k|km)/i;
+                let kmTarget = `${name} ${cmtMatch ? cmtMatch[1] : ''} ${descMatch ? descMatch[1] : ''}`;
+                const kmMatch = kmTarget.match(kmRegex);
+                if (kmMatch) {
+                    km = kmMatch[1].replace(',', '.') + ' km';
+                }
+
                 // If name is just a number, try to use desc or cmt for more detail
                 if (/^\d+$/.test(name)) {
                     if (descMatch) name = `${name}: ${descMatch[1].trim()}`;
@@ -102,7 +111,6 @@ function parseWaypoints(xmlText) {
                 const typeMatch = innerXml.match(/<type[^>]*>([\s\S]*?)<\/type>/i);
                 const symMatch  = innerXml.match(/<sym[^>]*>([\s\S]*?)<\/sym>/i);
                 
-                if (typeMatch) type = typeMatch[1].trim();
                 if (typeMatch) type = typeMatch[1].trim();
                 else if (symMatch) type = symMatch[1].trim(); // Fallback to sym
                 
@@ -118,18 +126,14 @@ function parseWaypoints(xmlText) {
                     'ass': 'Assistance (ASS)'
                 };
 
-                const lowerXml = innerXml.toLowerCase();
                 for (const [tag, label] of Object.entries(orMappings)) {
-                    // Look for tag with or without openrally: prefix, case-insensitive
                     const regex = new RegExp(`<(openrally:)?${tag}`, 'i');
                     if (regex.test(innerXml)) {
                         type = label;
-                        // Special case: Speed limit in DZ/FZ
                         const speedMatch = innerXml.match(/<openrally:speed[^>]*>([\s\S]*?)<\/openrally:speed>/i);
                         if (speedMatch) {
                             type += ` [Max ${speedMatch[1].trim()}]`;
                         }
-                        console.log(`Found WP Type: ${tag} => ${type} for WP ${name}`);
                         break;
                     }
                 }
@@ -170,7 +174,7 @@ function parseWaypoints(xmlText) {
                     }
                 }
 
-                waypoints.push({ lat, lng, name, type, validationRadius, openingRadius });
+                waypoints.push({ lat, lng, name, type, validationRadius, openingRadius, km });
             }
         }
     }
