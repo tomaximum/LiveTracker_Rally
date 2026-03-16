@@ -167,7 +167,10 @@ function loadGPX(xmlText, name, id) {
                 color: '#10b981', fill: false, dashArray: '5,5'
             }).addTo(wpLayer);
             
-            let popupContent = `<b>#${idx + 1} ${wp.name}</b>`;
+            let popupContent = `<b>#${idx + 1}</b>`;
+            if (wp.name && isNaN(wp.name.trim())) {
+                popupContent = `<b>#${idx + 1} ${wp.name}</b>`;
+            }
             if (wp.type) popupContent += `<br>${wp.type}`;
             if (wp.km) popupContent += `<br>${wp.km}`;
             
