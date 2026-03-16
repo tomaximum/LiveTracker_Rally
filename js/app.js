@@ -764,12 +764,14 @@ function initUI() {
     document.getElementById('toggle-radii').onchange = (e) => {
         state.settings.showRadii = e.target.checked;
         state.loadedGpx.forEach(g => {
-            g.layers.forEach(l => {
-                if (l instanceof L.Circle && l.options.dashArray === '5,5') {
-                    if (e.target.checked) l.addTo(g.wpLayer);
-                    else g.wpLayer.removeLayer(l);
-                }
-            });
+            if (g.wpLayer) {
+                g.wpLayer.eachLayer(l => {
+                    if (l instanceof L.Circle) {
+                        // Toggle stroke to hide/show the circle line
+                        l.setStyle({ stroke: e.target.checked });
+                    }
+                });
+            }
         });
     };
     document.getElementById('toggle-wp-labels').onchange = (e) => {
