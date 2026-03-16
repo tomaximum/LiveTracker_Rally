@@ -1100,4 +1100,20 @@ input:checked+.toggle-slider::before {
 
 .participant-card.hidden-pilot .p-avatar::after {
     border-style: dashed;
+}
+
+/* ── Waypoint Labels ──────────────────────────────────────── */
+.wp-label {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #10b981 !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    padding: 0 !important;
+}
+
+body.hide-wp-labels .wp-label {
+    display: none !important;
 }

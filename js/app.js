@@ -161,17 +161,17 @@ function loadGPX(xmlText, name, id) {
         }).addTo(state.map);
 
         const wpLayer = L.layerGroup().addTo(state.map);
-        parsed.waypoints.forEach(wp => {
+        parsed.waypoints.forEach((wp, idx) => {
             const marker = L.circle([wp.lat, wp.lng], {
                 radius: wp.validationRadius || 200,
                 color: '#10b981', fillColor: '#10b981', fillOpacity: 0.2, dashArray: '5,5'
             }).addTo(wpLayer);
             
-            let popupContent = `<b>${wp.name}</b>`;
+            let popupContent = `<b>#${idx + 1} ${wp.name}</b>`;
             if (wp.type) popupContent += `<br>${wp.type}`;
             if (wp.km) popupContent += `<br>${wp.km}`;
             
-            marker.bindTooltip(popupContent);
+            marker.bindTooltip(popupContent, { permanent: true, direction: 'top', className: 'wp-label' });
         });
 
         state.loadedGpx.set(id, {
@@ -771,6 +771,10 @@ function initUI() {
                 }
             });
         });
+    };
+    document.getElementById('toggle-wp-labels').onchange = (e) => {
+        if (e.target.checked) document.body.classList.remove('hide-wp-labels');
+        else document.body.classList.add('hide-wp-labels');
     };
     document.getElementById('toggle-pilot-traces').onchange = (e) => {
         state.settings.showPilotTraces = e.target.checked;
