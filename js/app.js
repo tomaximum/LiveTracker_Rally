@@ -403,17 +403,19 @@ function renderParticipantList() {
         ${avatar || '🏍️'}
       </div>
       <div class="p-info">
-        <div class="p-name">${name}</div>
+        <div class="p-name" style="white-space: normal; word-break: break-all;">${name}</div>
         <div class="p-meta">
           <span class="p-speed">${displaySpeed ?? '—'} km/h</span>
           <span class="p-time" title="Mouvement / Connexion">⏳ ${sinceMinMove}m / 📡 ${sinceMinUpdate}m</span>
         </div>
       </div>
-      <div class="p-status ${statusClass}">${statusLabel}</div>
-      <div class="p-actions">
-        <button class="btn-icon-v" onclick="event.stopPropagation(); window.toggleParticipantVisibility('${id}')" title="${hidden ? 'Afficher' : 'Masquer'}">${hidden ? '👁️‍🗨️' : '👁️'}</button>
-        <button class="btn-icon-v" onclick="event.stopPropagation(); window.renameParticipant('${id}', '${name.replace(/'/g, "\\'")}')" title="Renommer">✏️</button>
-        <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto;">
+        <div class="p-status ${statusClass}" style="font-size: 11px;">${statusLabel}</div>
+        <div class="p-actions" style="margin-left: 0;">
+          <button class="btn-icon-v" onclick="event.stopPropagation(); window.toggleParticipantVisibility('${id}')" title="${hidden ? 'Afficher' : 'Masquer'}">${hidden ? '👁️‍🗨️' : '👁️'}</button>
+          <button class="btn-icon-v" onclick="event.stopPropagation(); window.renameParticipant('${id}', '${name.replace(/'/g, "\\'")}')" title="Renommer">✏️</button>
+          <button class="btn-icon-del-pilot" onclick="event.stopPropagation(); window.confirmDeletePilot('${id}', '${name.replace(/'/g, "\\'")}')" title="Supprimer ce pilote">🗑️</button>
+        </div>
       </div>`;
         card.addEventListener('click', () => focusParticipant(id));
         container.appendChild(card);
