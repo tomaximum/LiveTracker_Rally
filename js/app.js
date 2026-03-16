@@ -10,11 +10,7 @@ const state = {
     loadedGpx: new Map(),   // gpxId -> { id, name, routePoints, waypoints, layers:[], wpLayer }
     participants: new Map(), // id → { ...data, marker, markerEl }
     focusedId: null,
-    simMode: false,
-    ws: null,
-    wsUrl: '',
     alertEngine: null,
-    simulation: null,
     alertLog: [],           // [{...alert}]
     settings: {
         offRouteThresh: 100,
@@ -22,7 +18,6 @@ const state = {
         logInterval: 10,
         soundAlert: true,
         browserNotif: false,
-        simMode: false,
         showRadii: true,
         showTraces: true,
         showWaypoints: true,
@@ -69,12 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
         connectWS('ws://127.0.0.1:3000');
     }
 
-    // Auto-start simulation if enabled and no GPX (show demo immediately)
-    if (state.settings.simMode) {
-        setTimeout(() => {
-            loadDemoGPX();
-        }, 600);
-    }
 
     // Start Telegram Client if token exists (Autonomous Mode)
     if (state.settings.telegramToken) {
@@ -135,190 +124,10 @@ function rebuildGlobalRoute() {
         state.waypoints.push(...gpx.waypoints);
     }
     updateRouteStats(state.routePoints);
-    if (state.simulation) state.simulation.setRoute(state.routePoints);
-}
-
-function loadGPX(xmlText, filename, gpxId = null) {
-    try {
-        const parsed = parseGPX(xmlText);
-        const points = parsed.route || [];
-        const waypoints = parsed.waypoints || [];
-        
-        if (points.length < 2 && waypoints.length === 0) throw new Error('GPX invalide ou vide');
-
-        const id = gpxId !== null ? gpxId : Date.now();
-        if (state.loadedGpx.has(id)) return; // Already loaded (avoid double-add)
-
-        const gpxInfo = {
-            id, name: filename,
-            routePoints: points,
-            waypoints: waypoints,
-            layers: [],
-            wpLayer: L.layerGroup()
-        };
-
-        if (points.length >= 2) {
-            const latlngs = points.map(p => [p.lat, p.lng]);
-
-            const shadowLayer = L.polyline(latlngs, {
-                color: 'rgba(245,158,11,0.25)', weight: 10, lineCap: 'round', lineJoin: 'round'
-            });
-            const mainLayer = L.polyline(latlngs, {
-                color: '#f59e0b', weight: 4, lineCap: 'round', lineJoin: 'round'
-            });
-
-            if (state.settings.showTraces !== false) {
-                shadowLayer.addTo(state.map);
-                mainLayer.addTo(state.map);
-            }
-            gpxInfo.layers.push(shadowLayer, mainLayer);
-            state.map.fitBounds(mainLayer.getBounds(), { padding: [40, 40] });
-
-            // Start/end markers
-            L.marker(latlngs[0], { icon: createWaypointIcon('🏁', '#10b981') })
-                .bindTooltip('Départ', { permanent: false }).addTo(state.map);
-            L.marker(latlngs[latlngs.length - 1], { icon: createWaypointIcon('🏁', '#ef4444') })
-                .bindTooltip('Arrivée', { permanent: false }).addTo(state.map);
-
-        } else if (waypoints.length > 0) {
-            const bounds = L.latLngBounds(waypoints.map(w => [w.lat, w.lng]));
-            state.map.fitBounds(bounds, { padding: [40, 40] });
-        }
-
-        // Draw OpenRally waypoints
-        waypoints.forEach(wp => {
-            const isStartEnd = wp.name === 'ASS' || wp.name === 'DSS';
-            const color = isStartEnd ? '#10b981' : '#3b82f6';
-            
-            const wpLabel = `${wp.name}${wp.type ? ' [' + wp.type + ']' : ''}`;
-            console.log("Rendering WP:", wpLabel, "Type:", wp.type);
-
-            // Validation Circle (Physical boundary)
-            const validationCircle = L.circle([wp.lat, wp.lng], {
-                color, fillColor: color, fillOpacity: 0.1, radius: wp.validationRadius, weight: 2
-            });
-
-            // Permanent Tooltip for labels
-            validationCircle.bindTooltip(wpLabel, {
-                permanent: true,
-                direction: 'top',
-                className: 'wp-tooltip',
-                offset: [0, -10]
-            });
-
-            if (state.settings.showWaypoints !== false) {
-                validationCircle.addTo(gpxInfo.wpLayer);
-            }
-            
-            gpxInfo.layers.push(validationCircle);
-            // Removed: openingCircle (visibility boundary) as requested
-        });
-
-        if (state.settings.showWaypoints !== false) {
-            gpxInfo.wpLayer.addTo(state.map);
-        }
-
-        state.loadedGpx.set(id, gpxInfo);
-        rebuildGlobalRoute();
-
-        // Update drop zone UI
-        const dropEl = document.getElementById('gpx-drop');
-        if (dropEl) {
-            dropEl.classList.add('loaded');
-            dropEl.querySelector('.drop-icon').textContent = '✅';
-            dropEl.querySelector('.drop-text').textContent = filename || 'Trace chargée';
-            dropEl.querySelector('.drop-hint').textContent = `${points.length} pts, ${waypoints.length} WPs`;
-        }
-
-        showToast(`${filename} chargée — ${points.length} pts, ${waypoints.length} WPs`, 'success');
-
-    } catch (err) {
-        showToast('Erreur GPX : ' + err.message, 'error');
-    }
-}
-
-function unloadGPX(id) {
-    const gpx = state.loadedGpx.get(id);
-    if (!gpx) return;
-    gpx.layers.forEach(l => state.map.removeLayer(l));
-    state.map.removeLayer(gpx.wpLayer);
-    state.loadedGpx.delete(id);
-    rebuildGlobalRoute();
-}
-
-function updateRouteStats(points) {
-    let totalDist = 0;
-    let minEle = Infinity, maxEle = -Infinity;
-    for (let i = 1; i < points.length; i++) {
-        totalDist += haversineDistance(points[i - 1], points[i]);
-        if (points[i].ele !== undefined) {
-            minEle = Math.min(minEle, points[i].ele);
-            maxEle = Math.max(maxEle, points[i].ele);
-        }
-    }
-    document.getElementById('stat-dist').textContent =
-        totalDist > 1000 ? (totalDist / 1000).toFixed(1) + ' km' : Math.round(totalDist) + ' m';
-    document.getElementById('stat-ele').textContent =
-        (minEle !== Infinity && maxEle !== -Infinity)
-            ? Math.round(maxEle - minEle) + ' m'
-            : '—';
-}
-
-function createWaypointIcon(emoji, color) {
-    return L.divIcon({
-        className: '',
-        html: `<div style="width:28px;height:28px;border-radius:50%;border:3px solid ${color};
-           background:#1a2235;display:flex;align-items:center;justify-content:center;
-           font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.5)">${emoji}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-    });
-}
-
-/* ── Demo GPX (User-provided project GPX) ──────────────────────── */
-function loadDemoGPX() {
-    const filename = 'AxeQuad RoadBook - Formation RB 25k v26.03.08 (TerraPirata).gpx';
-    console.log("Loading user GPX for simulation:", filename);
-
-    fetch(filename)
-        .then(response => {
-            if (!response.ok) throw new Error('Could not load ' + filename);
-            return response.text();
-        })
-        .then(xmlText => {
-            loadGPX(xmlText, filename, -1);
-            // Simulation will start automatically if settings.simMode is true
-            // but we call it here to be sure if manually triggered
-            startSimulation();
-        })
-        .catch(err => {
-            console.error('Erreur chargement GPX simulation:', err);
-            showToast('Erreur chargement GPX simulation', 'error');
-        });
-}
-
-function generateSyntheticRoute(startLat, startLng, numPoints, segmentMetres) {
-    const pts = [{ lat: startLat, lng: startLng, ele: 550 }];
-    let lat = startLat, lng = startLng;
-    let headingDeg = 45 + Math.random() * 90; // general NE direction
-    let ele = 550;
-
-    for (let i = 1; i < numPoints; i++) {
-        // Random turn ±25°
-        headingDeg += (Math.random() - 0.5) * 50;
-        const headingRad = headingDeg * Math.PI / 180;
-        const cosLat = Math.cos(lat * Math.PI / 180);
-        const dLat = (segmentMetres * Math.cos(headingRad)) / 111319;
-        const dLng = (segmentMetres * Math.sin(headingRad)) / (111319 * cosLat);
-        lat = lat + dLat;
-        lng = lng + dLng;
-        ele += (Math.random() - 0.4) * 30;
-        pts.push({ lat, lng, ele: Math.max(200, Math.round(ele)) });
-    }
-    return pts;
-}
-
-/* ── Participant Rendering ──────────────────────────────────────────────────── */
+/* ── Simulation ─────────────────────────────────────────────────────────────── */
+function startSimulation() { /* Removed */ }
+function stopSimulation() { /* Removed */ }
+function loadDemoGPX() { /* Removed */ }
 function updateParticipant(data) {
     const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
     let { displaySpeed, history, hidden } = data;
@@ -810,23 +619,62 @@ function initUI() {
         updatePilotTraces();
     };
 
+    const handleFile = (file) => {
+        if (!file || !file.name.toLowerCase().endsWith('.gpx')) {
+            showToast('Veuillez sélectionner un fichier .gpx', 'error');
+            return;
+        }
+        
+        console.log('[GPX] Tentative de lecture du fichier :', file.name, 'Size:', file.size);
+        const reader = new FileReader();
+        
+        reader.onload = (ev) => {
+            const content = ev.target.result;
+            if (!content || content.length < 50) {
+                showToast('Le fichier GPX semble vide ou corrompu', 'error');
+                return;
+            }
+            uploadGPX(file.name, content);
+        };
+        
+        reader.onerror = (err) => {
+            console.error('[GPX] Erreur FileReader:', err);
+            showToast('Erreur de lecture du fichier', 'error');
+        };
+
+        // Utilisation de readAsText avec encodage explicite UTF-8
+        reader.readAsText(file, 'UTF-8');
+    };
+
     dropZone.addEventListener('click', () => fileInput.click());
+    
     fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => { uploadGPX(file.name, ev.target.result); };
-        reader.readAsText(file);
+        if (e.target.files && e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+            // Reset input so the same file can be re-uploaded if needed
+            e.target.value = '';
+        }
     });
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+    dropZone.addEventListener('dragover', (e) => { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        dropZone.classList.add('drag-over'); 
+    });
+    
+    dropZone.addEventListener('dragleave', (e) => { 
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over'); 
+    });
+    
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); dropZone.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => { uploadGPX(file.name, ev.target.result); };
-        reader.readAsText(file);
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+        }
     });
 
     // Trace / Waypoint toggles
@@ -901,40 +749,10 @@ function initUI() {
         showToast(`Pilote ${name} ajouté`);
     });
 
-    // Simulation toggle
-    document.getElementById('btn-sim').addEventListener('click', () => {
-        if (state.simulation) {
-            stopSimulation();
-        } else {
-            state.settings.simMode = true;
-            loadDemoGPX();
-        }
-    });
-
     // Center on route
     document.getElementById('btn-fit').addEventListener('click', () => {
         if (state.routeLayer) state.map.fitBounds(state.routeLayer.getBounds(), { padding: [40, 40] });
     });
-
-    // Slider live update
-    const offrouteSlider = document.getElementById('s-offroute');
-    if (offrouteSlider) {
-        offrouteSlider.addEventListener('input', (e) => {
-            const valEl = document.getElementById('s-offroute-val');
-            if (valEl) valEl.textContent = e.target.value + ' m';
-        });
-    }
-
-    const immobileSlider = document.getElementById('s-immobile');
-    if (immobileSlider) {
-        immobileSlider.addEventListener('input', (e) => {
-            const valEl = document.getElementById('s-immobile-val');
-            if (valEl) valEl.textContent = e.target.value + ' min';
-        });
-    }
-
-    // Share position logic
-    document.getElementById('btn-share-pos').addEventListener('click', toggleSharePosition);
 
     // Refresh participant list periodically (time since last update)
     setInterval(renderParticipantList, 30000);
@@ -1099,6 +917,25 @@ async function loadGPXFromServer(id) {
 }
 
 async function uploadGPX(name, data) {
+    const isAutonomous = !!state.settings.telegramToken;
+    
+    // En mode autonome, on privilégie le chargement local immédiat
+    if (isAutonomous) {
+        console.log('[Autonomous] Chargement GPX local direct.');
+        const localId = 'local-' + Date.now();
+        loadGPX(data, name, localId);
+        showToast('Trace chargée localement (Mode Autonome)', 'success');
+        
+        // On essaie quand même de sauvegarder sur le serveur en tâche de fond si dispo
+        fetch('/api/gpx', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, data })
+        }).catch(() => { /* ignore silent failure */ });
+        
+        return;
+    }
+
     try {
         const res = await fetch('/api/gpx', {
             method: 'POST',
@@ -1112,13 +949,13 @@ async function uploadGPX(name, data) {
             return;
         }
     } catch (err) {
-        console.warn('[Autonomous] Serveur non détecté, chargement local du GPX.');
+        console.warn('[App] Serveur non détecté ou erreur réseau, repli local.');
     }
 
-    // FALLBACK LOCAL: Si pas de serveur, on charge directement en mémoire
+    // FALLBACK LOCAL
     const localId = 'local-' + Date.now();
     loadGPX(data, name, localId);
-    showToast('Mode Autonome : Trace chargée localement', 'info');
+    showToast('Mode Local : Trace chargée en mémoire', 'info');
 }
 
 window.confirmDeletePilot = function(id, name) {
@@ -1136,19 +973,6 @@ async function deleteParticipantFromServer(id) {
             // Remove locally even if 404 (might be a simulation pilot)
             console.log(res.ok ? "Server deletion OK" : "Pilot not on server (404), removing locally");
             removeParticipant(id);
-            if (state.simulation) {
-                // Also remove from simulation engine if applicable
-                state.simulation.participants = state.simulation.participants.filter(p => p.id !== id);
-            }
-            showToast('Pilote supprimé', 'success');
-        } else {
-            console.error("Deletion failed for:", id, "Status:", res.status);
-            showToast('Erreur suppression', 'error');
-        }
-    } catch(e) { 
-        console.error("Delete pilot error:", e);
-        showToast('Erreur suppression', 'error'); 
-    }
 }
 
 function removeParticipant(id) {
@@ -1184,78 +1008,3 @@ function updatePilotTraces() {
     });
 }
 
-/* ── Browser Geolocation ───────────────────────────────────────────────────── */
-function toggleSharePosition() {
-    if (state.isSharing) {
-        stopSharingPosition();
-    } else {
-        startSharingPosition();
-    }
-}
-
-function startSharingPosition() {
-    if (!navigator.geolocation) {
-        showToast("Géolocalisation non supportée", "error");
-        return;
-    }
-
-    const btn = document.getElementById('btn-share-pos');
-    btn.innerHTML = '🛑 Arrêter le partage';
-    btn.classList.remove('btn-accent');
-    btn.classList.add('btn-danger');
-
-    state.isSharing = true;
-    state.watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-            const { latitude: lat, longitude: lng } = pos.coords;
-            const p = {
-                id: state.myId,
-                name: "Moi (Navigateur)",
-                lat,
-                lng,
-                color: "#10b981",
-                avatar: "📍",
-                source: "browser"
-            };
-            
-            updateParticipant(p);
-            
-            // Broadcast to server if connected
-            if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-                state.ws.send(JSON.stringify({ type: 'position', participant: p }));
-            }
-        },
-        (err) => {
-            console.error("Erreur géolocalisation:", err);
-            showToast("Erreur GPS : " + err.message, "error");
-            stopSharingPosition();
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        }
-    );
-    showToast("Suivi GPS activé", "success");
-}
-
-function stopSharingPosition() {
-    if (state.watchId !== null) {
-        navigator.geolocation.clearWatch(state.watchId);
-        state.watchId = null;
-    }
-    
-    state.isSharing = false;
-    const btn = document.getElementById('btn-share-pos');
-    btn.innerHTML = '📍 Partager ma position';
-    btn.classList.add('btn-accent');
-    btn.classList.remove('btn-danger');
-    
-    // Notify server of removal (optional, but good practice)
-    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(JSON.stringify({ type: 'remove_participant', id: state.myId }));
-    }
-    
-    removeParticipant(state.myId);
-    showToast("Suivi GPS arrêté", "info");
-}
