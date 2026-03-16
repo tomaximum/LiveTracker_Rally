@@ -162,11 +162,8 @@ function loadGPX(xmlText, name, id) {
 
         const wpLayer = L.layerGroup().addTo(state.map);
         parsed.waypoints.forEach((wp, idx) => {
-            // Drop back fallback to 10m for generic labels if undefined
-            const isGeneric = ['wpm', 'wpc', 'dz', 'fz', 'dss', 'ass', 'cp', 'rav'].some(k => 
-                wp.name && wp.name.toLowerCase().startsWith(k)
-            );
-            const radius = wp.validationRadius !== undefined ? wp.validationRadius : (isGeneric ? 10 : 200);
+            // Use parsed radius if available, otherwise default to 10m
+            const radius = wp.validationRadius !== undefined ? wp.validationRadius : 10;
 
             const marker = L.circle([wp.lat, wp.lng], {
                 radius: radius,
