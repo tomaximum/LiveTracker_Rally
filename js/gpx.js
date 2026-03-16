@@ -142,8 +142,8 @@ function parseWaypoints(xmlText) {
                     console.log(`Using standard Type/Sym: ${type} for WP ${name}`);
                 }
                 
-                let validationRadius = 200; // default 200m
-                let openingRadius = 800;    // default 800m
+                let validationRadius = undefined; 
+                let openingRadius = undefined;    
                 
                 // Match <openrally:wpv clear="50" open="800"> or <openrally:dz ...>
                 // Using [\s\S]*? so it handles attributes across newlines
@@ -151,16 +151,16 @@ function parseWaypoints(xmlText) {
                 if (wpvMatch) {
                     const clearMatch = wpvMatch[1].match(/clear="([^"]+)"/i);
                     const openMatch  = wpvMatch[1].match(/open="([^"]+)"/i);
-                    if (clearMatch) validationRadius = parseFloat(clearMatch[1]) || validationRadius;
-                    if (openMatch)  openingRadius    = parseFloat(openMatch[1])  || openingRadius;
+                    if (clearMatch) validationRadius = parseFloat(clearMatch[1]);
+                    if (openMatch)  openingRadius    = parseFloat(openMatch[1]);
                 }
                 
                 const dzMatch = innerXml.match(/<openrally:dz([\s\S]*?)(\/?>)/i);
                 if (dzMatch) {
                     const clearMatch = dzMatch[1].match(/clear="([^"]+)"/i);
                     const openMatch  = dzMatch[1].match(/open="([^"]+)"/i);
-                    if (clearMatch) validationRadius = parseFloat(clearMatch[1]) || validationRadius;
-                    if (openMatch)  openingRadius    = parseFloat(openMatch[1])  || openingRadius;
+                    if (clearMatch) validationRadius = parseFloat(clearMatch[1]);
+                    if (openMatch)  openingRadius    = parseFloat(openMatch[1]);
                 }
                 
                 // Generic fallback: look anywhere in extensions
@@ -169,8 +169,8 @@ function parseWaypoints(xmlText) {
                     if (extsMatch) {
                         const clearMatch = extsMatch[1].match(/clear="([^"]+)"/i);
                         const openMatch  = extsMatch[1].match(/open="([^"]+)"/i);
-                        if (clearMatch) validationRadius = parseFloat(clearMatch[1]) || validationRadius;
-                        if (openMatch)  openingRadius    = parseFloat(openMatch[1])  || openingRadius;
+                        if (clearMatch) validationRadius = parseFloat(clearMatch[1]);
+                        if (openMatch)  openingRadius    = parseFloat(openMatch[1]);
                     }
                 }
 

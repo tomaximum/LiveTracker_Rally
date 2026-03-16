@@ -13,8 +13,8 @@ const state = {
     alertEngine: null,
     alertLog: [],           // [{...alert}]
     settings: {
-        offRouteThresh: 100,
-        immobileThresh: 5,
+        offRouteThresh: 500,
+        immobileThresh: 2,
         logInterval: 10,
         soundAlert: true,
         browserNotif: false,
@@ -162,9 +162,16 @@ function loadGPX(xmlText, name, id) {
 
         const wpLayer = L.layerGroup().addTo(state.map);
         parsed.waypoints.forEach((wp, idx) => {
+            // Drop back fallback to 10m for generic labels if undefined
+            const isGeneric = ['wpm', 'wpc', 'dz', 'fz', 'dss', 'ass', 'cp', 'rav'].some(k => 
+                wp.name && wp.name.toLowerCase().startsWith(k)
+            );
+            const radius = wp.validationRadius !== undefined ? wp.validationRadius : (isGeneric ? 10 : 200);
+
             const marker = L.circle([wp.lat, wp.lng], {
-                radius: wp.validationRadius || 200,
-                color: '#10b981', fill: false, dashArray: '5,5'
+                radius: radius,
+                color: '#10b981', fill: false, dashArray: '5,5',
+                weight: 1 // Thin line as requested
             }).addTo(wpLayer);
             
             let popupContent = `<b>#${idx + 1}</b>`;
