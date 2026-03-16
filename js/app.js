@@ -164,7 +164,7 @@ function loadGPX(xmlText, name, id) {
         parsed.waypoints.forEach((wp, idx) => {
             const marker = L.circle([wp.lat, wp.lng], {
                 radius: wp.validationRadius || 200,
-                color: '#10b981', fillColor: '#10b981', fillOpacity: 0.2, dashArray: '5,5'
+                color: '#10b981', fill: false, dashArray: '5,5'
             }).addTo(wpLayer);
             
             let popupContent = `<b>#${idx + 1} ${wp.name}</b>`;

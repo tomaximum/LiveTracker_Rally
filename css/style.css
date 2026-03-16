@@ -1107,10 +1107,10 @@ input:checked+.toggle-slider::before {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    color: #10b981 !important;
+    color: #000000 !important;
     font-weight: 600 !important;
     font-size: 11px !important;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    text-shadow: 0 0 3px #ffffff !important;
     padding: 0 !important;
 }
 
