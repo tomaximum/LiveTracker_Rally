@@ -1109,17 +1109,28 @@ function initUI() {
     if (wlBtn) wlBtn.addEventListener('click', toggleWakeLock);
 
     // Participants modal
-    document.getElementById('btn-add-pilot').addEventListener('click', openPilotsModal);
-    document.getElementById('modal-pilots-overlay').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('modal-pilots-overlay')) closePilotsModal();
-    });
-    document.getElementById('btn-pilots-close').addEventListener('click', closePilotsModal);
+    const btnAddPilot = document.getElementById('btn-add-pilot');
+    if (btnAddPilot) btnAddPilot.addEventListener('click', openPilotsModal);
+    
+    const modalPilotsOverlay = document.getElementById('modal-pilots-overlay');
+    if (modalPilotsOverlay) {
+        modalPilotsOverlay.addEventListener('click', (e) => {
+            if (e.target === modalPilotsOverlay) closePilotsModal();
+        });
+    }
+    const btnPilotsClose = document.getElementById('btn-pilots-close');
+    if (btnPilotsClose) btnPilotsClose.addEventListener('click', closePilotsModal);
 
     // Add manual pilot
-    document.getElementById('btn-save-pilot').addEventListener('click', () => {
-        const name = document.getElementById('new-pilot-name').value.trim();
-        const avatar = document.getElementById('new-pilot-icon').value;
-        if (!name) return;
+    const btnSavePilot = document.getElementById('btn-save-pilot');
+    if (btnSavePilot) {
+        btnSavePilot.addEventListener('click', () => {
+            const nameEl = document.getElementById('new-pilot-name');
+            const iconEl = document.getElementById('new-pilot-icon');
+            if (!nameEl) return;
+            const name = nameEl.value.trim();
+            const avatar = iconEl ? iconEl.value : '🏍️';
+            if (!name) return;
 
         // Pick random color
         const colors = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#ec4899", "#14b8a6"];
@@ -1144,7 +1155,8 @@ function initUI() {
 
         document.getElementById('new-pilot-name').value = '';
         showToast(`Pilote ${name} ajouté`);
-    });
+        });
+    }
 
 
 
