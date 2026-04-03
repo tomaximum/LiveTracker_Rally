@@ -209,7 +209,8 @@ function loadGPX(xmlText, name, id, fromSave = false) {
  * Generates a unique ID and calls loadGPX.
  */
 function uploadGPX(name, content) {
-    const id = 'gpx_' + Date.now();
+    // Simple unique ID, prefix 'gpx_' will be added by storage
+    const id = 't_' + Date.now();
     loadGPX(content, name, id);
 }
 
@@ -219,21 +220,32 @@ function saveGpxToLocal(xml, name, id) {
         localStorage.setItem(key, JSON.stringify({ id, name, xml }));
     } catch (e) {
         console.warn('[Storage] Error saving GPX (probably size limit)', e);
+        showToast('Stockage plein (limite navigateur)', 'error');
     }
 }
 
 function restoreGpxFromLocal() {
+    console.log('[Storage] Tentative de restauration des traces...');
     try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('gpx_')) {
+        // Freeze keys list to avoid iteration issues if localStorage changes
+        const keys = Object.keys(localStorage).filter(k => k.startsWith('gpx_'));
+        console.log(`[Storage] ${keys.length} trace(s) trouvée(s) dans le stockage.`);
+        
+        // Load each one
+        keys.sort().forEach(key => {
+            try {
                 const data = JSON.parse(localStorage.getItem(key));
                 if (data && data.xml) {
+                    console.log(`[Storage] Restauration de : ${data.name} (ID: ${data.id})`);
                     loadGPX(data.xml, data.name, data.id, true);
                 }
+            } catch (err) {
+                console.error(`[Storage] Erreur sur la clé ${key}:`, err);
             }
-        }
-    } catch (e) { console.error('[Storage] Error restoring GPX', e); }
+        });
+    } catch (e) { 
+        console.error('[Storage] Erreur globale de restauration :', e); 
+    }
 }
 
 function unloadGPX(id) {
