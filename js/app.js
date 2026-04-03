@@ -10,6 +10,7 @@ const state = {
     loadedGpx: new Map(),   // gpxId -> { id, name, routePoints, waypoints, layers:[], wpLayer }
     participants: new Map(), // id → { ...data, marker, markerEl }
     focusedId: null,
+    mapFocus: { type: null, id: null }, // 'pilot' | 'gpx' | null
     alertEngine: null,
     alertLog: [],           // [{...alert}]
     settings: {
@@ -396,7 +397,7 @@ function updateParticipant(data) {
         // Create new marker
         const { marker, el } = createParticipantMarker({ id, lat, lng, color, avatar, name });
         marker.bindPopup(() => buildPopup(state.participants.get(id)?.data || participantData), {
-            closeButton: false, className: 'p-popup'
+            closeButton: false, className: 'p-popup', autoPan: false
         });
         
         if (!hidden) marker.addTo(state.map);
@@ -555,11 +556,17 @@ function updateMarkerStyle(p, status) {
 function focusParticipant(id) {
     const p = state.participants.get(id);
     if (p) {
+        // Set unified focus to this pilot, clearing any GPX focus
         state.focusedId = id;
-        console.log(`[App] Centrage sur ${p.data.name} (${id}) : ${p.data.lat}, ${p.data.lng}`);
+        state.mapFocus = { type: 'pilot', id };
+        
+        console.log(`[App] Focus pilote: ${p.data.name} (${id}) : ${p.data.lat}, ${p.data.lng}`);
+        
         state.map.invalidateSize();
-        state.map.setView([p.data.lat, p.data.lng], 14, { animate: true });
-        p.marker.openPopup();
+        state.map.setView([p.data.lat, p.data.lng], 15, { animate: true });
+        
+        if (p.marker) p.marker.openPopup();
+        
         renderParticipantList();
     }
 }
@@ -635,7 +642,7 @@ window.renameParticipant = function(id, name) {
             // Rebuild popup content
             if (p.marker) {
                 p.marker.bindPopup(() => buildPopup(p.data), {
-                    closeButton: false, className: 'p-popup'
+                    closeButton: false, className: 'p-popup', autoPan: false
                 });
             }
             if (state.ws && state.ws.readyState === WebSocket.OPEN) {
@@ -695,11 +702,16 @@ function renderAlertList() {
     list.innerHTML = state.alertLog.slice(0, 15).map(a => {
         const t = new Date(a.ts);
         const ts = t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        return `<div class="alert-item type-${a.type}">
+        const pidAttr = a.participantId ? `data-pid="${a.participantId}"` : '';
+        return `<div class="alert-item type-${a.type}" ${pidAttr} style="cursor:${a.participantId ? 'pointer' : 'default'}">
       <div class="alert-ts">${ts}</div>
       <div>${a.message}</div>
     </div>`;
     }).join('');
+    // Add click handlers to focus the participant on the map when clicking an alert
+    list.querySelectorAll('.alert-item[data-pid]').forEach(el => {
+        el.addEventListener('click', () => focusParticipant(el.dataset.pid));
+    });
 }
 
 /* ── Simulation ─────────────────────────────────────────────────────────────── */
@@ -1323,6 +1335,10 @@ async function fetchGPXLibrary() {
 window.centerOnGPX = function(id) {
     const gpx = state.loadedGpx.get(parseInt(id) || id);
     if (gpx) {
+        // Set unified focus to this GPX, clearing any pilot focus
+        state.mapFocus = { type: 'gpx', id };
+        state.focusedId = null; // deselect any focused pilot
+        
         const bounds = L.latLngBounds([]);
         gpx.layers.forEach(l => {
             if (l.getBounds) bounds.extend(l.getBounds());
@@ -1331,6 +1347,7 @@ window.centerOnGPX = function(id) {
         if (bounds.isValid()) {
             state.map.fitBounds(bounds, { padding: [40, 40] });
         }
+        renderParticipantList(); // refresh to remove 'focused' highlight on pilot cards
     } else {
         showToast('Chargez d\'abord la trace pour centrer', 'info');
     }
