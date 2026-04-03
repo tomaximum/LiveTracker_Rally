@@ -684,6 +684,8 @@ function addAlertToLog(alert) {
 }
 
 function renderAlertList() {
+    const list = document.getElementById('alerts-list');
+    if (!list) return;
     list.innerHTML = '';
     // v1.3.4: Filter out acknowledged alerts (silenced by user)
     const visibleAlerts = state.alertLog.filter(a => {
