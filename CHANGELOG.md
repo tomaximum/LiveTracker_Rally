@@ -1,5 +1,11 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [1.3.5] - 2026-04-03
+Séparation de la gestion du Token Telegram et de la base de données.
+- **Paramètres** : Ajout d'un bouton "✖️" pour supprimer uniquement le Token Telegram.
+- **Maintenance** : La fonction "Vider la base de données" préserve désormais le Token Telegram par défaut.
+- **Sécurité** : Ajout de confirmations avant la suppression du Token.
+
 ## [1.3.4] - 2026-04-03
 Nouvelle version de stabilité 1.3.4.
 - **Scroll** : Correction du défilement global de la barre latérale.

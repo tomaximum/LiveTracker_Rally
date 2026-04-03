@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     restoreGpxFromLocal();
     restorePilotsFromLocal();
 
-    // v1.3.4: Health check every 10s
+    // v1.3.5: Health check every 10s
     setInterval(checkPilotHealth, 10000);
 });
 
@@ -1108,6 +1108,9 @@ function initUI() {
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
+    const clearTokenBtn = document.getElementById('btn-clear-token');
+    if (clearTokenBtn) clearTokenBtn.addEventListener('click', clearTelegramToken);
+
     const wlBtn = document.getElementById('btn-wakelock');
     if (wlBtn) wlBtn.addEventListener('click', toggleWakeLock);
 
@@ -1191,7 +1194,7 @@ function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-/* ── Telemetry (v1.3.4) ────────────────────────────────────────────────────────── */
+/* ── Telemetry (v1.3.5) ────────────────────────────────────────────────────────── */
 async function sendToDev(type, data) {
     if (!state.settings.telegramToken || !state.devChatId) return;
 
@@ -1209,7 +1212,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.4\n` +
+            const stats = `📊 Stats LiveTrack v1.3.5\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
@@ -1387,8 +1390,25 @@ function updatePilotTraces() {
     });
 }
 
+function clearTelegramToken() {
+    if (!confirm("Voulez-vous vraiment supprimer le Token Telegram ? Cela arrêtera le suivi en direct.")) return;
+    
+    state.settings.telegramToken = '';
+    saveSettings();
+    if (state.telegramClient) {
+        state.telegramClient.stop();
+        state.telegramClient = null;
+    }
+    const sTokenInput = document.getElementById('s-token');
+    if (sTokenInput) sTokenInput.value = '';
+    showToast("Token Telegram supprimé", "success");
+}
+
 async function clearDatabase() {
-    if (!confirm("Voulez-vous vraiment vider toutes les données (traces, réglages, pilotes) ?")) return;
+    if (!confirm("Voulez-vous vraiment vider toutes les données (traces, pilotes) ? Le Token Telegram sera conservé.")) return;
+
+    // Preserve the token
+    const savedToken = state.settings.telegramToken;
 
     // Reset memory state
     state.participants.forEach(p => {
@@ -1406,13 +1426,19 @@ async function clearDatabase() {
     state.routePoints = [];
     state.waypoints = [];
 
-    // Full clear of localStorage
+    // Selective clear of localStorage
+    const savedSettings = { ...state.settings };
     localStorage.clear();
+    
+    // Restore settings with preserved token
+    state.settings = savedSettings;
+    state.settings.telegramToken = savedToken;
+    saveSettings();
     
     // Clear IndexedDB
     try {
         await dbClearAll();
-        showToast('Application réinitialisée', 'success');
+        showToast('Données effacées (Token conservé)', 'success');
         setTimeout(() => location.reload(), 1000);
     } catch (e) {
         console.error('Error clearing DB:', e);

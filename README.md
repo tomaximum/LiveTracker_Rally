@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-1.3.4--cloud-blue)
+![Version](https://img.shields.io/badge/version-1.3.5--cloud-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
