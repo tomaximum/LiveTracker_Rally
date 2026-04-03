@@ -33,6 +33,9 @@ const state = {
     devChatId: '8398361106' // v1.3.0 Telemetry recipient
 };
 
+const OFFLINE_TIMEOUT = 5 * 60 * 1000;
+const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
+
 // Automated test helper
 if (new URLSearchParams(window.location.search).get('test') === 'true') {
     window.isAutomatedTest = true;
@@ -66,6 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore GPX from local storage
     restoreGpxFromLocal();
     restorePilotsFromLocal();
+
+    // v1.3.2: Health check every 10s
+    setInterval(checkPilotHealth, 10000);
 });
 
 /* ── Map Initialization ─────────────────────────────────────────────────────── */
@@ -423,10 +429,101 @@ function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
     return { marker, el };
 }
 
+function buildPopup(data) {
+    if (!data) return '';
+    const { name, displaySpeed, lastMoved, lat, lng, status, avatar } = data;
+    const lastUpdate = data.lastUpdate || lastMoved;
+    const timeSince = formatTimeSince(lastUpdate);
+    
+    const statusLabel = status === 'offline' ? '⚪ Hors Ligne'
+        : status === 'immobile' ? '🔴 Immobile'
+        : status === 'off_route' ? '⚠️ Hors trace'
+        : '✅ OK';
+
+    return `
+        <div style="min-width:160px; font-family:inherit;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="font-size:24px;">${avatar || '🏍️'}</span>
+                <strong style="font-size:14px;">${name}</strong>
+            </div>
+            <div style="font-size:12px; display:grid; gap:4px;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:2px;">
+                    <span style="color:#666;">Statut:</span>
+                    <span style="font-weight:600;">${statusLabel}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:2px;">
+                    <span style="color:#666;">Dernière pos:</span>
+                    <span style="font-weight:600;">${timeSince}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#666;">Vitesse:</span>
+                    <span style="font-weight:600; color:var(--accent);">${displaySpeed || 0} km/h</span>
+                </div>
+            </div>
+            <div style="margin-top:8px; font-size:10px; opacity:0.6; text-align:right;">
+                ${lat.toFixed(5)}, ${lng.toFixed(5)}
+            </div>
+        </div>
+    `;
+}
+
+function formatTimeSince(ts) {
+    if (!ts) return '—';
+    const diff = Date.now() - ts;
+    const totalSec = Math.floor(diff / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return (m > 0) ? `${m}m ${s}s` : `${s}s`;
+}
+
+function checkPilotHealth() {
+    const now = Date.now();
+    let hasChanges = false;
+
+    state.participants.forEach((p, id) => {
+        const lastUpdate = p.data.lastUpdate || p.data.lastMoved;
+        const diff = now - lastUpdate;
+
+        // Cleanup after 24h
+        if (diff > CLEANUP_TIMEOUT) {
+            console.log(`[Health] Cleanup: Removing p ${id} (inactive > 24h)`);
+            state.map.removeLayer(p.marker);
+            if (p.trail) state.map.removeLayer(p.trail);
+            state.participants.delete(id);
+            hasChanges = true;
+            return;
+        }
+
+        // Offline detection
+        const isOffline = diff > OFFLINE_TIMEOUT;
+        if (isOffline && p.data.status !== 'offline') {
+            p.data.status = 'offline';
+            updateMarkerStyle(p, 'offline');
+            hasChanges = true;
+        } else if (!isOffline && p.data.status === 'offline') {
+            // Restore actual status
+            p.data.status = state.alertEngine ? state.alertEngine.getWorstStatus(id) : 'ok';
+            updateMarkerStyle(p, p.data.status);
+            hasChanges = true;
+        }
+        
+        // Refresh popup if open
+        if (p.marker.getPopup() && p.marker.isPopupOpen()) {
+            p.marker.setPopupContent(buildPopup(p.data));
+        }
+    });
+
+    if (hasChanges) {
+        renderParticipantList();
+        updateStats();
+    }
+}
+
 function updateMarkerStyle(p, status) {
-    const color = status === 'immobile' ? '#ef4444'
-        : status === 'off_route' ? '#f59e0b'
-            : '#10b981'; // Green for OK status
+    const color = status === 'offline' ? '#94a3b8' // Grey
+        : status === 'immobile' ? '#ef4444' // Red
+        : status === 'off_route' ? '#f59e0b' // Orange
+        : '#10b981'; // Green for OK
 
     const el = p.marker.getElement();
     if (el) {
@@ -436,25 +533,6 @@ function updateMarkerStyle(p, status) {
             dot.style.color = color;
         }
     }
-}
-
-function buildPopup(data) {
-    if (!data) return '';
-    const { name, displaySpeed, lastMoved, lat, lng, status, avatar } = data;
-    const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
-    const lastUpdate = data.lastUpdate || lastMoved;
-    const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
-    
-    const statusLabel = status === 'immobile' ? '🔴 Immobile'
-        : status === 'off_route' ? '⚠️ Hors trace'
-            : '✅ OK';
-            
-    return `<div class="popup-name">${avatar || '🏍️'} ${name}</div>
-    <div class="popup-row"><span>Vitesse</span><span class="popup-val">${displaySpeed ?? '—'} km/h</span></div>
-    <div class="popup-row"><span>Statut</span><span class="popup-val">${statusLabel}</span></div>
-    <div class="popup-row"><span>Mouvement</span><span class="popup-val">il y a ${sinceMinMove} min</span></div>
-    <div class="popup-row"><span>Connexion</span><span class="popup-val">il y a ${sinceMinUpdate} min</span></div>
-    <div class="popup-row"><span>Position</span><span class="popup-val">${lat?.toFixed(4)}, ${lng?.toFixed(4)}</span></div>`;
 }
 
 function focusParticipant(id) {
@@ -482,16 +560,17 @@ function renderParticipantList() {
     container.innerHTML = '';
     parts.forEach(({ data, marker }) => {
         const { id, name, avatar, color, displaySpeed, lastMoved, status, hidden } = data;
-        const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
         const lastUpdate = data.lastUpdate || lastMoved;
-        const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
+        const timeSince = formatTimeSince(lastUpdate);
 
-        const statusLabel = status === 'immobile' ? '🔴 Immobile'
+        const statusLabel = status === 'offline' ? '⚪ Hors Ligne'
+            : status === 'immobile' ? '🔴 Immobile'
             : status === 'off_route' ? '⚠️ Hors trace'
-                : '✅ En route';
-        const statusClass = status === 'immobile' ? 'immobile'
+            : '✅ En route';
+        const statusClass = status === 'offline' ? 'offline'
+            : status === 'immobile' ? 'immobile'
             : status === 'off_route' ? 'off-route'
-                : 'ok';
+            : 'ok';
 
         const card = document.createElement('div');
         card.className = `participant-card${state.focusedId === id ? ' focused' : ''}${status !== 'ok' ? ' alert-' + status : ''}${hidden ? ' hidden-pilot' : ''}`;
@@ -503,7 +582,7 @@ function renderParticipantList() {
         <div class="p-name" style="white-space: normal; word-break: break-all;">${name}</div>
         <div class="p-meta">
           <span class="p-speed">${displaySpeed ?? '—'} km/h</span>
-          <span class="p-time" title="Mouvement / Connexion">⏳ ${sinceMinMove}m / 📡 ${sinceMinUpdate}m</span>
+          <span class="p-time" title="Dernière position reçue">📡 ${timeSince}</span>
         </div>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto;">
