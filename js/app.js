@@ -422,7 +422,7 @@ function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
 function updateMarkerStyle(p, status) {
     const color = status === 'immobile' ? '#ef4444'
         : status === 'off_route' ? '#f59e0b'
-            : p.data.color;
+            : '#10b981'; // Green for OK status
 
     const el = p.marker.getElement();
     if (el) {
