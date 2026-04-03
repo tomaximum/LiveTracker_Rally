@@ -1,5 +1,12 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [1.3.6] - 2026-04-03
+Version stable de référence après correctifs critiques.
+- **UI & Traces** : Correction du bug d'invisibilité de la liste des roadbooks (fix flex-shrink).
+- **Focus Unifié** : Nouveau système de focus intelligent. Cliquer sur un roadbook désélectionne le pilote (et vice-versa) pour éviter les conflits de centrage.
+- **Alertes Interactives** : Les alertes dans le panneau latéral sont maintenant cliquables pour centrer instantanément le pilote concerné.
+- **Stabilité** : Nettoyage des écouteurs d'événements et renforcement de l'initialisation de l'interface.
+
 ## [1.3.5] - 2026-04-03
 Séparation de la gestion du Token Telegram et de la base de données.
 - **Paramètres** : Ajout d'un bouton "✖️" pour supprimer uniquement le Token Telegram.
@@ -29,4 +36,4 @@ Version majeure de nettoyage ("Cloud Only").
 Version de référence sanctuarisée (avant refonte).
 
 ---
-*Dernière mise à jour : 03/04/2026*
+*Dernière mise à jour : 03/04/2026 (Stable 1.3.6)*
