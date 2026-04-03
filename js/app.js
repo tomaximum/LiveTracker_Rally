@@ -144,7 +144,7 @@ function loadGPX(xmlText, name, id, fromSave = false) {
     try {
         if (!state.map) { console.error('Map is null'); return; }
         
-        const existing = state.loadedGpx.get(id) || state.loadedGpx.get(parseInt(id));
+        const existing = state.loadedGpx.get(id) || state.loadedGpx.get(String(id));
         if (existing) unloadGPX(id);
         
         const parsed = parseGPX(xmlText);
@@ -153,15 +153,20 @@ function loadGPX(xmlText, name, id, fromSave = false) {
         const latlngs = parsed.route.map(p => [p.lat, p.lng]);
         const routeLayer = L.polyline(latlngs, {
             color: '#3b82f6', weight: 4, opacity: 0.8
-        }).addTo(state.map);
+        });
+        
+        if (state.settings.showTraces !== false) routeLayer.addTo(state.map);
 
-        const wpLayer = L.layerGroup().addTo(state.map);
+        const wpLayer = L.layerGroup();
+        if (state.settings.showWaypoints !== false) wpLayer.addTo(state.map);
+
         parsed.waypoints.forEach((wp, idx) => {
-            const radius = wp.validationRadius !== undefined ? wp.validationRadius : 10;
+            const radius = wp.validationRadius !== undefined ? wp.validationRadius : 20; // Default 20m
             const marker = L.circle([wp.lat, wp.lng], {
                 radius: radius,
                 color: '#10b981', fill: false, dashArray: '5,5',
-                weight: 1
+                weight: 1,
+                stroke: state.settings.showRadii !== false
             }).addTo(wpLayer);
             
             let popupContent = `<b>#${idx + 1}</b>`;
@@ -171,7 +176,11 @@ function loadGPX(xmlText, name, id, fromSave = false) {
             if (wp.type) popupContent += `<br>${wp.type}`;
             if (wp.km) popupContent += `<br>${wp.km}`;
             
-            marker.bindTooltip(popupContent, { permanent: true, direction: 'top', className: 'wp-label' });
+            marker.bindTooltip(popupContent, { 
+                permanent: true, 
+                direction: 'top', 
+                className: 'wp-label' 
+            });
         });
 
         state.loadedGpx.set(id, {
@@ -186,13 +195,10 @@ function loadGPX(xmlText, name, id, fromSave = false) {
 
         rebuildGlobalRoute();
         
-        if (typeof centerOnGPX === 'function') {
-            centerOnGPX(id);
-        } else if (routeLayer.getBounds) {
+        if (routeLayer.getBounds) {
             state.map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
         }
         
-        // Save to local storage if not already from save
         if (!fromSave) {
             saveGpxToLocal(xmlText, name, id);
         }
@@ -277,62 +283,182 @@ function unloadGPX(id) {
 }
 
 function updateParticipant(data) {
-    const { id, name, lat, lng, color, avatar, lastUpdate, history } = data;
+    const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
+    let { displaySpeed, history, hidden } = data;
+
+    // Load existing participant data if available
+    const existingP = state.participants.get(id);
+    if (existingP) {
+        history = history || existingP.data.history || [];
+        hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
+    } else {
+        history = history || [];
+        hidden = (hidden !== undefined) ? hidden : false;
+    }
+
+    // Update history
+    const now = Date.now();
+    const lastPoint = history.length > 0 ? history[history.length - 1] : null;
     
-    const existing = state.participants.get(id);
-    
-    if (existing) {
-        // Update history
-        if (history && Array.isArray(history)) {
-            existing.history = history;
+    // Only add to history if moved significantly or first point
+    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 1) { 
+        history.push({ lat, lng, ts: now });
+        if (history.length > 5000) history.shift(); 
+    }
+
+    // Calculate speed if missing and we have enough history
+    if (displaySpeed === undefined || displaySpeed === null) {
+        if (history.length >= 2) {
+            const p1 = history[history.length - 2];
+            const p2 = history[history.length - 1];
+            const dist = haversineDistance(p1, p2);
+            const timeDiff = (p2.ts - p1.ts) / 1000; // seconds
+            if (timeDiff > 0) {
+                displaySpeed = Math.round((dist / timeDiff) * 3.6);
+            } else {
+                displaySpeed = 0;
+            }
         } else {
-            existing.history.push([lat, lng]);
-            if (existing.history.length > 2000) existing.history.shift(); // Limit history size
+            displaySpeed = 0;
+        }
+    }
+
+    const participantData = { 
+        ...data, 
+        lat, lng, 
+        displaySpeed, 
+        lastMoved: lastMoved || now, 
+        stopped, 
+        history, 
+        hidden 
+    };
+
+    // Check alerts
+    if (state.alertEngine && state.routePoints.length > 0) {
+        state.alertEngine.check(participantData, state.routePoints);
+    }
+
+    const status = state.alertEngine ? state.alertEngine.getWorstStatus(id) : 'ok';
+    participantData.status = status;
+
+    if (existingP) {
+        // Update existing marker
+        existingP.data = participantData;
+        
+        if (hidden) {
+            if (state.map.hasLayer(existingP.marker)) state.map.removeLayer(existingP.marker);
+            if (existingP.trail && state.map.hasLayer(existingP.trail)) state.map.removeLayer(existingP.trail);
+        } else {
+            existingP.marker.setLatLng([lat, lng]);
+            if (!state.map.hasLayer(existingP.marker)) existingP.marker.addTo(state.map);
+            updateMarkerStyle(existingP, status);
+            
+            // Update trail visibility and thickness
+            if (existingP.trail) {
+                existingP.trail.setLatLngs(history.map(h => [h.lat, h.lng]));
+                if (state.settings.showPilotTraces) {
+                    if (!state.map.hasLayer(existingP.trail)) existingP.trail.addTo(state.map);
+                } else {
+                    state.map.removeLayer(existingP.trail);
+                }
+            }
         }
         
-        existing.lat = lat;
-        existing.lng = lng;
-        existing.lastUpdate = lastUpdate;
-        existing.marker.setLatLng([lat, lng]);
-        existing.polyline.setLatLngs(existing.history);
-        
         // Save to IndexedDB
-        savePilotToLocal(id, existing);
+        savePilotToLocal(id, participantData);
     } else {
-        const hist = (history && Array.isArray(history)) ? history : [[lat, lng]];
-        const polyline = L.polyline(hist, { color: color || '#ff0000', weight: 3, dashArray: '5, 5' }).addTo(state.map);
+        // Create new marker
+        const { marker, el } = createParticipantMarker({ id, lat, lng, color, avatar, name });
+        marker.bindPopup(() => buildPopup(state.participants.get(id)?.data || participantData), {
+            closeButton: false, className: 'p-popup'
+        });
         
-        const marker = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: color || '#ff0000',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 0.9
-        }).addTo(state.map);
+        if (!hidden) marker.addTo(state.map);
+        
+        marker.on('click', () => focusParticipant(id));
+        
+        // Create trail
+        const trail = L.polyline(history.map(h => [h.lat, h.lng]), {
+            color: color || '#ff0000', weight: 3, dashArray: '5, 5', opacity: 0.8
+        });
+        if (state.settings.showPilotTraces && !hidden) trail.addTo(state.map);
 
-        const pilot = { 
-            id, name, lat, lng, lastUpdate, color, avatar, 
-            history: hist, 
-            marker, polyline 
-        };
-        state.participants.set(id, pilot);
+        state.participants.set(id, {
+            marker, el, trail,
+            data: participantData
+        });
         
         // Save to IndexedDB
-        savePilotToLocal(id, pilot);
+        savePilotToLocal(id, participantData);
     }
+
+    // Performance: Throttle re-rendering the list
+    if (!state.renderListTimeout) {
+        state.renderListTimeout = setTimeout(() => {
+            renderParticipantList();
+            updateStats();
+            state.renderListTimeout = null;
+        }, 1000); 
+    }
+}
+
+function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
+    const el = document.createElement('div');
+    el.className = 'p-marker-dot pulse';
+    el.style.borderColor = color;
+    el.style.setProperty('color', color);
+    el.innerHTML = avatar || '🏍️';
+
+    const icon = L.divIcon({
+        className: '',
+        html: el.outerHTML,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+    });
+    const marker = L.marker([lat, lng], { icon, title: name });
+    return { marker, el };
+}
+
+function updateMarkerStyle(p, status) {
+    const color = status === 'immobile' ? '#ef4444'
+        : status === 'off_route' ? '#f59e0b'
+            : p.data.color;
+
+    const el = p.marker.getElement();
+    if (el) {
+        const dot = el.querySelector('.p-marker-dot');
+        if (dot) {
+            dot.style.borderColor = color;
+            dot.style.color = color;
+        }
+    }
+}
+
+function buildPopup(data) {
+    if (!data) return '';
+    const { name, displaySpeed, lastMoved, lat, lng, status, avatar } = data;
+    const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
+    const lastUpdate = data.lastUpdate || lastMoved;
+    const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
+    
+    const statusLabel = status === 'immobile' ? '🔴 Immobile'
+        : status === 'off_route' ? '⚠️ Hors trace'
+            : '✅ OK';
+            
+    return `<div class="popup-name">${avatar || '🏍️'} ${name}</div>
+    <div class="popup-row"><span>Vitesse</span><span class="popup-val">${displaySpeed ?? '—'} km/h</span></div>
+    <div class="popup-row"><span>Statut</span><span class="popup-val">${statusLabel}</span></div>
+    <div class="popup-row"><span>Mouvement</span><span class="popup-val">il y a ${sinceMinMove} min</span></div>
+    <div class="popup-row"><span>Connexion</span><span class="popup-val">il y a ${sinceMinUpdate} min</span></div>
+    <div class="popup-row"><span>Position</span><span class="popup-val">${lat?.toFixed(4)}, ${lng?.toFixed(4)}</span></div>`;
 }
 
 function focusParticipant(id) {
     const p = state.participants.get(id);
     if (p) {
-        // Force map to update size calculation before centering
         state.map.invalidateSize();
-        
-        // Center with no autopan to keep exact focus
-        state.map.setView([p.lat, p.lng], 14, { animate: true });
-        
-        // Open popup without shifting map
-        p.marker.bindPopup(`<b>${p.name}</b><br>Dernier point : ${new Date(p.lastUpdate).toLocaleTimeString()}`, { autoPan: false }).openPopup();
+        state.map.setView([p.data.lat, p.data.lng], 14, { animate: true });
+        p.marker.openPopup();
     }
 }
 
@@ -990,7 +1116,7 @@ window.confirmDeletePilot = function(id, name) {
         const p = state.participants.get(id);
         if (p) {
             if (p.marker) state.map.removeLayer(p.marker);
-            if (p.polyline) state.map.removeLayer(p.polyline);
+            if (p.trail) state.map.removeLayer(p.trail);
             state.participants.delete(id);
             dbDeletePilot(id);
             renderParticipantList();
@@ -1002,9 +1128,9 @@ window.confirmDeletePilot = function(id, name) {
 function updatePilotTraces() {
     const show = state.settings.showPilotTraces;
     state.participants.forEach(p => {
-        if (p.polyline) {
-            if (show) p.polyline.addTo(state.map);
-            else state.map.removeLayer(p.polyline);
+        if (p.trail) {
+            if (show) p.trail.addTo(state.map);
+            else state.map.removeLayer(p.trail);
         }
     });
 }
