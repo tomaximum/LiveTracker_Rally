@@ -39,4 +39,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 3. Poussez sur `master` pour une mise à jour automatique via GitHub Pages.
 
 ---
-*Développé par tomaximum — Version 1.1.0 Cloud Only*
+*Développé par Antigraity, Gemini et Tomaximum — Version 1.1.0 Cloud Only*
