@@ -1099,6 +1099,7 @@ function initUI() {
         if (e.target === document.getElementById('modal-overlay')) closeSettingsModal();
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
+    document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
