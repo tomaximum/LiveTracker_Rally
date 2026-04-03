@@ -2,6 +2,7 @@
 
 ![Version](https://img.shields.io/badge/version-1.1.0--cloud-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **LiveTrack Rally** est une solution de suivi GPS 100% Web et Cloud, optimisée pour un usage mobile via **GitHub Pages**. Elle permet de visualiser la progression de pilotes en temps réel sans nécessiter d'installation de serveur local complexe.
 
@@ -39,4 +40,9 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 3. Poussez sur `master` pour une mise à jour automatique via GitHub Pages.
 
 ---
-*Développé par Antigraity, Gemini et Tomaximum — Version 1.1.0 Cloud Only*
+
+## ⚖️ Licence
+Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+*Développé par Antigravity, Gemini et Tomaximum — Version 1.1.1 Cloud Only*

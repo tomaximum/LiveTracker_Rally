@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Restore GPX from local storage
     restoreGpxFromLocal();
+    restorePilotsFromLocal();
 });
 
 /* ── Map Initialization ─────────────────────────────────────────────────────── */
@@ -209,213 +210,130 @@ function loadGPX(xmlText, name, id, fromSave = false) {
  * Generates a unique ID and calls loadGPX.
  */
 function uploadGPX(name, content) {
-    // Simple unique ID, prefix 'gpx_' will be added by storage
     const id = 't_' + Date.now();
     loadGPX(content, name, id);
 }
 
-function saveGpxToLocal(xml, name, id) {
+async function saveGpxToLocal(xml, name, id) {
     try {
-        const key = 'gpx_' + id;
-        localStorage.setItem(key, JSON.stringify({ id, name, xml }));
+        await dbSaveGpx(id, name, xml);
     } catch (e) {
-        console.warn('[Storage] Error saving GPX (probably size limit)', e);
-        showToast('Stockage plein (limite navigateur)', 'error');
+        console.warn('[Storage] Error saving GPX to IndexedDB', e);
+        showToast('Erreur de stockage GPX', 'error');
     }
 }
 
-function restoreGpxFromLocal() {
-    console.log('[Storage] Tentative de restauration des traces...');
+async function restoreGpxFromLocal() {
+    console.log('[Storage] Restauration des traces depuis IndexedDB...');
     try {
-        // Freeze keys list to avoid iteration issues if localStorage changes
-        const keys = Object.keys(localStorage).filter(k => k.startsWith('gpx_'));
-        console.log(`[Storage] ${keys.length} trace(s) trouvée(s) dans le stockage.`);
-        
-        // Load each one
-        keys.sort().forEach(key => {
-            try {
-                const data = JSON.parse(localStorage.getItem(key));
-                if (data && data.xml) {
-                    console.log(`[Storage] Restauration de : ${data.name} (ID: ${data.id})`);
-                    loadGPX(data.xml, data.name, data.id, true);
-                }
-            } catch (err) {
-                console.error(`[Storage] Erreur sur la clé ${key}:`, err);
-            }
+        const storedGpx = await dbGetAllGpx();
+        console.log(`[Storage] ${storedGpx.length} trace(s) trouvée(s).`);
+        storedGpx.forEach(g => {
+            console.log(`[Storage] Restauration de : ${g.name}`);
+            loadGPX(g.xml, g.name, g.id, true);
         });
     } catch (e) { 
-        console.error('[Storage] Erreur globale de restauration :', e); 
+        console.error('[Storage] Erreur de restauration GPX :', e); 
+    }
+}
+
+async function savePilotToLocal(id, data) {
+    try {
+        await dbSavePilot(id, data);
+    } catch (e) {
+        console.warn('[Storage] Error saving pilot to IndexedDB', e);
+    }
+}
+
+async function restorePilotsFromLocal() {
+    console.log('[Storage] Restauration des pilotes depuis IndexedDB...');
+    try {
+        const pilots = await dbGetAllPilots();
+        pilots.forEach(p => {
+            // Re-simulate update for each pilot to restore marker and history
+            updateParticipant(p.id, p.name, p.lat, p.lng, p.lastUpdate, p.color, p.avatar, p.history);
+        });
+    } catch (e) {
+        console.error('[Storage] Erreur de restauration des pilotes :', e);
     }
 }
 
 function unloadGPX(id) {
     const gpx = state.loadedGpx.get(id);
-    if (gpx) {
-        if (gpx.layers) gpx.layers.forEach(l => { if (state.map && state.map.hasLayer(l)) state.map.removeLayer(l); });
-        if (gpx.wpLayer && state.map && state.map.hasLayer(gpx.wpLayer)) state.map.removeLayer(gpx.wpLayer);
-        state.loadedGpx.delete(id);
-        
-        // Remove from local storage
-        localStorage.removeItem('gpx_' + id);
+    if (!gpx) return;
 
-        rebuildGlobalRoute();
-        fetchGPXLibrary();
-    }
+    // Remove from map
+    gpx.layers.forEach(l => state.map.removeLayer(l));
+    if (gpx.wpLayer) state.map.removeLayer(gpx.wpLayer);
+
+    // Remove from state
+    state.loadedGpx.delete(id);
+
+    // Remove from storage
+    dbDeleteGpx(id);
+
+    fetchGPXLibrary();
+    rebuildGlobalRoute();
 }
+
 function updateParticipant(data) {
-    const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
-    let { displaySpeed, history, hidden } = data;
-
-    // Load existing participant data if available
-    const existingP = state.participants.get(id);
-    if (existingP) {
-        history = history || existingP.data.history || [];
-        hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
-    } else {
-        history = history || [];
-        hidden = (hidden !== undefined) ? hidden : false;
-    }
-
-    // Update history
-    const now = Date.now();
-    const lastPoint = history.length > 0 ? history[history.length - 1] : null;
+    const { id, name, lat, lng, color, avatar, lastUpdate, history } = data;
     
-    // Only add to history if moved significantly or first point
-    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 1) { // Reduced threshold slightly for smoother lines
-        history.push({ lat, lng, ts: now });
-        if (history.length > 5000) history.shift(); // Increased to 5000 points
-    }
-
-    // Calculate speed if missing and we have enough history
-    if (displaySpeed === undefined || displaySpeed === null) {
-        if (history.length >= 2) {
-            const p1 = history[history.length - 2];
-            const p2 = history[history.length - 1];
-            const dist = haversineDistance(p1, p2);
-            const timeDiff = (p2.ts - p1.ts) / 1000; // seconds
-            if (timeDiff > 0) {
-                displaySpeed = Math.round((dist / timeDiff) * 3.6);
-            } else {
-                displaySpeed = 0;
-            }
-        } else {
-            displaySpeed = 0;
-        }
-    }
-
-    const participantData = { 
-        ...data, 
-        lat, lng, 
-        displaySpeed, 
-        lastMoved: lastMoved || now, 
-        stopped, 
-        history, 
-        hidden 
-    };
-
-    // Check alerts
-    if (state.alertEngine && state.routePoints.length > 0) {
-        state.alertEngine.check(participantData, state.routePoints);
-    }
-
-    const status = state.alertEngine ? state.alertEngine.getWorstStatus(id) : 'ok';
-    participantData.status = status;
-
-    if (existingP) {
-        // Update existing marker
-        existingP.data = participantData;
-        
-        if (hidden) {
-            if (state.map.hasLayer(existingP.marker)) state.map.removeLayer(existingP.marker);
-            if (existingP.trail && state.map.hasLayer(existingP.trail)) state.map.removeLayer(existingP.trail);
-        } else {
-            existingP.marker.setLatLng([lat, lng]);
-            if (!state.map.hasLayer(existingP.marker)) existingP.marker.addTo(state.map);
-            updateMarkerStyle(existingP, status);
-        }
-    } else {
-        // Create new marker
-        const { marker, el } = createParticipantMarker({ id, lat, lng, color, avatar, name });
-        marker.bindPopup(() => buildPopup(state.participants.get(id)?.data || participantData), {
-            closeButton: false, className: 'p-popup'
-        });
-        
-        if (!hidden) marker.addTo(state.map);
-        
-        marker.on('click', () => focusParticipant(id));
-        state.participants.set(id, {
-            marker, el,
-            data: participantData
-        });
-    }
-
-    // Performance: Throttle re-rendering the list
-    if (!state.renderListTimeout) {
-        state.renderListTimeout = setTimeout(() => {
-            renderParticipantList();
-            updateStats();
-            updatePilotTraces();
-            state.renderListTimeout = null;
-        }, 1000); // Max once per second
-    }
-}
-
-function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
-    const el = document.createElement('div');
-    el.className = 'p-marker-dot pulse';
-    el.style.borderColor = color;
-    el.style.setProperty('color', color);
-    el.innerHTML = avatar;
-
-    const icon = L.divIcon({
-        className: '',
-        html: el.outerHTML,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-    });
-    const marker = L.marker([lat, lng], { icon, title: name });
-    return { marker, el };
-}
-
-function updateMarkerStyle(p, status) {
-    const color = status === 'immobile' ? '#ef4444'
-        : status === 'off_route' ? '#f59e0b'
-            : p.data.color;
-
-    const el = p.marker.getElement();
-    if (el) {
-        el.style.borderColor = color;
-        el.style.color = color;
-    }
-}
-
-function buildPopup(data) {
-    if (!data) return '';
-    const { name, displaySpeed, lastMoved, lat, lng, status } = data;
-    const sinceMinMove = lastMoved ? Math.round((Date.now() - lastMoved) / 60000) : '?';
-    const lastUpdate = data.lastUpdate || lastMoved;
-    const sinceMinUpdate = lastUpdate ? Math.round((Date.now() - lastUpdate) / 60000) : '?';
+    const existing = state.participants.get(id);
     
-    const statusLabel = status === 'immobile' ? '🔴 Immobile'
-        : status === 'off_route' ? '⚠️ Hors trace'
-            : '✅ OK';
-            
-    return `<div class="popup-name">${data.avatar || '🏍️'} ${name}</div>
-    <div class="popup-row"><span>Vitesse</span><span class="popup-val">${displaySpeed ?? '—'} km/h</span></div>
-    <div class="popup-row"><span>Statut</span><span class="popup-val">${statusLabel}</span></div>
-    <div class="popup-row"><span>Mouvement</span><span class="popup-val">il y a ${sinceMinMove} min</span></div>
-    <div class="popup-row"><span>Connexion</span><span class="popup-val">il y a ${sinceMinUpdate} min</span></div>
-    <div class="popup-row"><span>Position</span><span class="popup-val">${lat?.toFixed(4)}, ${lng?.toFixed(4)}</span></div>`;
+    if (existing) {
+        // Update history
+        if (history && Array.isArray(history)) {
+            existing.history = history;
+        } else {
+            existing.history.push([lat, lng]);
+            if (existing.history.length > 2000) existing.history.shift(); // Limit history size
+        }
+        
+        existing.lat = lat;
+        existing.lng = lng;
+        existing.lastUpdate = lastUpdate;
+        existing.marker.setLatLng([lat, lng]);
+        existing.polyline.setLatLngs(existing.history);
+        
+        // Save to IndexedDB
+        savePilotToLocal(id, existing);
+    } else {
+        const hist = (history && Array.isArray(history)) ? history : [[lat, lng]];
+        const polyline = L.polyline(hist, { color: color || '#ff0000', weight: 2, dashArray: '5, 5' }).addTo(state.map);
+        
+        const marker = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: color || '#ff0000',
+            color: '#fff',
+            weight: 2,
+            fillOpacity: 0.9
+        }).addTo(state.map);
+
+        const pilot = { 
+            id, name, lat, lng, lastUpdate, color, avatar, 
+            history: hist, 
+            marker, polyline 
+        };
+        state.participants.set(id, pilot);
+        
+        // Save to IndexedDB
+        savePilotToLocal(id, pilot);
+    }
 }
 
 function focusParticipant(id) {
-    state.focusedId = id;
     const p = state.participants.get(id);
     if (p) {
-        state.map.setView([p.data.lat, p.data.lng], 14, { animate: true });
-        p.marker.openPopup();
+        // Force map to update size calculation before centering
+        state.map.invalidateSize();
+        
+        // Center with no autopan to keep exact focus
+        state.map.setView([p.lat, p.lng], 14, { animate: true });
+        
+        // Open popup without shifting map
+        p.marker.bindPopup(`<b>${p.name}</b><br>Dernier point : ${new Date(p.lastUpdate).toLocaleTimeString()}`, { autoPan: false }).openPopup();
     }
-    renderParticipantList();
 }
 
 /* ── Participant List UI ────────────────────────────────────────────────────── */
@@ -906,7 +824,7 @@ function initUI() {
             lng = state.routePoints[0].lng;
         }
 
-        const p = { id, name, lat, lng, avatar, color, source: 'manual' };
+        const p = { id, name, lat, lng, avatar, color, source: 'manual', lastUpdate: Date.now() };
         updateParticipant(p);
 
         // Broadcast to server if connected
@@ -1072,79 +990,55 @@ window.confirmDeletePilot = function(id, name) {
         const p = state.participants.get(id);
         if (p) {
             if (p.marker) state.map.removeLayer(p.marker);
-            if (p.poly) state.map.removeLayer(p.poly);
+            if (p.polyline) state.map.removeLayer(p.polyline);
             state.participants.delete(id);
+            dbDeletePilot(id);
             renderParticipantList();
             showToast(`Pilote ${name} supprimé`);
         }
     }
 }
-function removeParticipant(id) {
-    const p = state.participants.get(id);
-    if (p) {
-        if (p.marker) state.map.removeLayer(p.marker);
-        if (p.poly) state.map.removeLayer(p.poly);
-        if (p.trail) state.map.removeLayer(p.trail);
-        state.participants.delete(id);
-        renderParticipantList();
-        updateStats();
-    }
-}
 
 function updatePilotTraces() {
-    if (!state.settings || !state.settings.showPilotTraces) {
-        state.participants.forEach(p => {
-            if (p.trail) { state.map.removeLayer(p.trail); p.trail = null; }
-        });
-        return;
-    }
-    
-    state.participants.forEach((p, id) => {
-        if (p.data.history && p.data.history.length > 1) {
-            const latlngs = p.data.history.map(h => [h.lat, h.lng]);
-            if (!p.trail) {
-                p.trail = L.polyline(latlngs, {
-                    color: p.data.color || '#3b82f6', weight: 1.5, opacity: 0.8
-                }).addTo(state.map);
-                p.trail.on('click', () => focusParticipant(id));
-            } else {
-                p.trail.setLatLngs(latlngs);
-            }
+    const show = state.settings.showPilotTraces;
+    state.participants.forEach(p => {
+        if (p.polyline) {
+            if (show) p.polyline.addTo(state.map);
+            else state.map.removeLayer(p.polyline);
         }
     });
 }
 
-function clearDatabase() {
-    if (!confirm('Voulez-vous vraiment vider la base de données (Traces et Pilotes) ?')) return;
+async function clearDatabase() {
+    if (!confirm("Voulez-vous vraiment vider toutes les données (traces, réglages, pilotes) ?")) return;
 
-    // Reset local memory state
+    // Reset memory state
     state.participants.forEach(p => {
         if (p.marker) state.map.removeLayer(p.marker);
-        if (p.poly) state.map.removeLayer(p.poly);
-        if (p.trail) state.map.removeLayer(p.trail);
+        if (p.polyline) state.map.removeLayer(p.polyline);
     });
     state.participants.clear();
 
     state.loadedGpx.forEach(g => {
-        if (g.layers) g.layers.forEach(l => state.map.removeLayer(l));
+        g.layers.forEach(l => state.map.removeLayer(l));
         if (g.wpLayer) state.map.removeLayer(g.wpLayer);
     });
     state.loadedGpx.clear();
-    
+
     state.routePoints = [];
     state.waypoints = [];
-    if (state.routeLayer) state.map.removeLayer(state.routeLayer);
 
     // Full clear of localStorage
     localStorage.clear();
-
-    renderParticipantList();
-    renderAlertList();
-    updateStats();
-    fetchGPXLibrary();
     
-    showToast('Application réinitialisée', 'success');
-    closeSettingsModal();
-    setTimeout(() => location.reload(), 1000);
+    // Clear IndexedDB
+    try {
+        await dbClearAll();
+        showToast('Application réinitialisée', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch (e) {
+        console.error('Error clearing DB:', e);
+        location.reload();
+    }
 }
 
