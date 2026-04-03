@@ -555,9 +555,12 @@ function updateMarkerStyle(p, status) {
 function focusParticipant(id) {
     const p = state.participants.get(id);
     if (p) {
+        state.focusedId = id;
+        console.log(`[App] Centrage sur ${p.data.name} (${id}) : ${p.data.lat}, ${p.data.lng}`);
         state.map.invalidateSize();
         state.map.setView([p.data.lat, p.data.lng], 14, { animate: true });
         p.marker.openPopup();
+        renderParticipantList();
     }
 }
 
