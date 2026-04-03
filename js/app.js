@@ -395,6 +395,11 @@ function updateParticipant(data) {
             }
         }
         
+        // v1.3.5: Auto-follow focused participant
+        if (state.focusedId === id && !hidden) {
+            state.map.panTo([lat, lng]);
+        }
+        
         // Save to IndexedDB
         savePilotToLocal(id, participantData);
     } else {
@@ -560,11 +565,24 @@ function updateMarkerStyle(p, status) {
 function focusParticipant(id) {
     const p = state.participants.get(id);
     if (p) {
+        state.focusedId = id;
         state.map.invalidateSize();
-        state.map.setView([p.data.lat, p.data.lng], 14, { animate: true });
-        p.marker.openPopup();
+        state.map.setView([p.data.lat, p.data.lng], 15, { animate: true });
+        
+        // Open popup without panning the map (to keep it centered)
+        p.marker.openPopup({ autoPan: false });
+        
+        // Highlight in list
+        renderParticipantList();
+        
+        // Auto-close sidebar on mobile
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('mobile-open')) {
+            sidebar.classList.remove('mobile-open');
+        }
     }
 }
+window.focusParticipant = focusParticipant;
 
 /* ── Participant List UI ────────────────────────────────────────────────────── */
 function renderParticipantList() {
