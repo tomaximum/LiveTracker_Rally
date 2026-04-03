@@ -300,7 +300,7 @@ function updateParticipant(data) {
         savePilotToLocal(id, existing);
     } else {
         const hist = (history && Array.isArray(history)) ? history : [[lat, lng]];
-        const polyline = L.polyline(hist, { color: color || '#ff0000', weight: 2, dashArray: '5, 5' }).addTo(state.map);
+        const polyline = L.polyline(hist, { color: color || '#ff0000', weight: 3, dashArray: '5, 5' }).addTo(state.map);
         
         const marker = L.circleMarker([lat, lng], {
             radius: 8,
