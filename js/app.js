@@ -28,7 +28,8 @@ const state = {
     renderListTimeout: null,
     isSharing: false,
     watchId: null,
-    myId: 'browser_' + Date.now()
+    myId: 'browser_' + Date.now(),
+    wakeLock: null
 };
 
 // Automated test helper
@@ -256,8 +257,8 @@ async function restorePilotsFromLocal() {
     try {
         const pilots = await dbGetAllPilots();
         pilots.forEach(p => {
-            // Re-simulate update for each pilot to restore marker and history
-            updateParticipant(p.id, p.name, p.lat, p.lng, p.lastUpdate, p.color, p.avatar, p.history);
+            // Re-simulate update for each pilot to restore marker and history (v1.2.0 fix)
+            updateParticipant(p);
         });
     } catch (e) {
         console.error('[Storage] Erreur de restauration des pilotes :', e);
@@ -644,7 +645,63 @@ function stopSimulation() {
 }
 
 
-/* ── Telegram Client (Autonomous) ─────────────────────────────────────────── */
+/* ── Screen Wake Lock (v1.2.0) ─────────────────────────────────────────────────── */
+async function toggleWakeLock() {
+    if (!('wakeLock' in navigator)) {
+        showToast("Votre navigateur ne supporte pas le maintien de l'écran allumé.", 'warn');
+        return;
+    }
+
+    try {
+        if (state.wakeLock) {
+            await state.wakeLock.release();
+            state.wakeLock = null;
+            updateWakeLockUI(false);
+        } else {
+            state.wakeLock = await navigator.wakeLock.request('screen');
+            updateWakeLockUI(true);
+            
+            state.wakeLock.addEventListener('release', () => {
+                if (state.wakeLock) updateWakeLockUI(false);
+                state.wakeLock = null;
+            });
+        }
+    } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+        showToast("Erreur lors de l'activation du maintien d'écran.", 'error');
+    }
+}
+
+function updateWakeLockUI(active) {
+    const btn = document.getElementById('btn-wakelock');
+    if (!btn) return;
+    
+    if (active) {
+        btn.classList.add('active');
+        btn.style.background = '#f59e0b';
+        btn.style.color = '#fff';
+        btn.title = "Désactiver le maintien de l'écran";
+        showToast("Écran : Maintien activé 📱🔒");
+    } else {
+        btn.classList.remove('active');
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.title = "Garder l'écran allumé";
+        showToast("Écran : Maintien désactivé");
+    }
+}
+
+// Re-lock if page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+    if (state.wakeLock !== null && document.visibilityState === 'visible') {
+        try {
+            state.wakeLock = await navigator.wakeLock.request('screen');
+            updateWakeLockUI(true);
+        } catch (err) {
+            console.error('[WakeLock] Auto-relock failed:', err);
+        }
+    }
+});
 function initTelegramClient(token) {
     if (state.telegramClient) state.telegramClient.stop();
     
@@ -919,10 +976,11 @@ function initUI() {
         if (e.target === document.getElementById('modal-overlay')) closeSettingsModal();
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
-    document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
-    
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
+
+    const wlBtn = document.getElementById('btn-wakelock');
+    if (wlBtn) wlBtn.addEventListener('click', toggleWakeLock);
 
     // Participants modal
     document.getElementById('btn-add-pilot').addEventListener('click', openPilotsModal);
