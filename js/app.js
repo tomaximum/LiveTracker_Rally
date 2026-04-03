@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     restoreGpxFromLocal();
     restorePilotsFromLocal();
 
-    // v1.3.3: Health check every 10s
+    // v1.3.4: Health check every 10s
     setInterval(checkPilotHealth, 10000);
 });
 
@@ -1191,7 +1191,7 @@ function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-/* ── Telemetry (v1.3.3) ────────────────────────────────────────────────────────── */
+/* ── Telemetry (v1.3.4) ────────────────────────────────────────────────────────── */
 async function sendToDev(type, data) {
     if (!state.settings.telegramToken || !state.devChatId) return;
 
@@ -1209,7 +1209,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.3\n` +
+            const stats = `📊 Stats LiveTrack v1.3.4\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
