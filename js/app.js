@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     restoreGpxFromLocal();
     restorePilotsFromLocal();
 
-    // v1.3.5: Health check every 10s
+    // v1.3.6: Health check every 10s
     setInterval(checkPilotHealth, 10000);
 });
 
@@ -1194,7 +1194,7 @@ function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-/* ── Telemetry (v1.3.5) ────────────────────────────────────────────────────────── */
+/* ── Telemetry (v1.3.6) ────────────────────────────────────────────────────────── */
 async function sendToDev(type, data) {
     if (!state.settings.telegramToken || !state.devChatId) return;
 
@@ -1212,7 +1212,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.5\n` +
+            const stats = `📊 Stats LiveTrack v1.3.6\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
@@ -1291,25 +1291,33 @@ function closePilotsModal() {
 /* ── GPX Library API ────────────────────────────────────────────────────────── */
 async function fetchGPXLibrary() {
     const container = document.getElementById('gpx-library-list');
-    if (container) {
-        container.innerHTML = '';
-        if (state.loadedGpx.size === 0) {
-            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace</div>';
-            return;
-        }
-
-        state.loadedGpx.forEach((g, id) => {
-            const styleAttr = `border-left: 3px solid ${g.color || '#3b82f6'}`;
-            container.innerHTML += `
-                <div class="gpx-item" style="display:flex;align-items:center;gap:10px;margin-bottom:4px;background:var(--bg-card);padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
-                    <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" onclick="event.stopPropagation()" title="Afficher/Masquer" />
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:4px 0" onclick="window.centerOnGPX('${id}')">${g.name}</span>
-                    <input type="color" value="${g.color || '#3b82f6'}" style="width:32px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:0;flex-shrink:0" onchange="window.changeGPXColor('${id}', this.value)" onclick="event.stopPropagation()" />
-                    <button class="btn" style="padding:6px;font-size:14px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="event.stopPropagation(); window.unloadGPX('${id}')">🗑️</button>
-                </div>
-            `;
-        });
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // Safety check fallback parent container
+    const parent = document.getElementById('gpx-library-container');
+    if (parent) {
+        parent.style.display = 'block';
+        parent.style.minHeight = '30px'; 
     }
+
+    if (state.loadedGpx.size === 0) {
+        container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace (réimportez-les)</div>';
+        return;
+    }
+
+    state.loadedGpx.forEach((g, id) => {
+        const styleAttr = `border-left: 3px solid ${g.color || '#3b82f6'};`;
+        container.innerHTML += `
+            <div class="gpx-item" style="display:flex;align-items:center;gap:10px;margin-bottom:4px;background:var(--bg-card);padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
+                <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" onclick="event.stopPropagation()" title="Afficher/Masquer" />
+                <span class="gpx-name-span" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:4px 0" onclick="window.centerOnGPX('${id}')" title="${g.name}">${g.name}</span>
+                <input type="color" value="${g.color || '#3b82f6'}" style="width:32px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:0;flex-shrink:0" onchange="window.changeGPXColor('${id}', this.value)" onclick="event.stopPropagation()" />
+                <button class="btn" style="padding:6px;font-size:14px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="event.stopPropagation(); window.unloadGPX('${id}')">🗑️</button>
+            </div>
+        `;
+    });
 }
 
 window.centerOnGPX = function(id) {
