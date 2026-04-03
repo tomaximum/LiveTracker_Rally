@@ -884,10 +884,14 @@ function initUI() {
         if (e.target.checked) document.body.classList.remove('hide-wp-labels');
         else document.body.classList.add('hide-wp-labels');
     };
-    document.getElementById('toggle-pilot-traces').onchange = (e) => {
-        state.settings.showPilotTraces = e.target.checked;
-        updatePilotTraces();
-    };
+    const togglePilotTraces = document.getElementById('toggle-pilot-traces');
+    if (togglePilotTraces) {
+        togglePilotTraces.checked = state.settings.showPilotTraces;
+        togglePilotTraces.onchange = (e) => {
+            state.settings.showPilotTraces = e.target.checked;
+            updatePilotTraces();
+        };
+    }
 
     const handleFile = (file) => {
         if (!file || !file.name.toLowerCase().endsWith('.gpx')) {
@@ -1071,7 +1075,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.0\n` +
+            const stats = `📊 Stats LiveTrack v1.3.1\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
