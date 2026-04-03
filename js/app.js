@@ -68,9 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
         initTelegramClient(state.settings.telegramToken);
     }
     
-    // Restore GPX from local storage
-    restoreGpxFromLocal();
-    restorePilotsFromLocal();
+    // Restore GPX and Pilots from IndexedDB
+    restoreGpxFromLocal().then(() => {
+        console.log('[Init] GPX restoration complete.');
+        return restorePilotsFromLocal();
+    }).then(() => {
+        console.log('[Init] Pilots restoration complete.');
+    }).catch(e => console.error('[Init] Error during database restoration:', e));
 
     // v1.3.2: Health check every 10s
     setInterval(checkPilotHealth, 10000);
@@ -236,7 +240,9 @@ function uploadGPX(name, content) {
 
 async function saveGpxToLocal(xml, name, id, color, visible) {
     try {
+        console.log('[Storage] Saving GPX to DB:', name, id);
         await dbSaveGpx(id, name, xml, color, visible);
+        console.log('[Storage] GPX saved successfully.');
     } catch (e) {
         console.warn('[Storage] Error saving GPX to IndexedDB', e);
         showToast('Erreur de stockage GPX', 'error');

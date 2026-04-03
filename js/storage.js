@@ -7,9 +7,13 @@ const STORE_GPX = 'gpx';
 const STORE_PILOTS = 'pilots';
 
 let db = null;
+let dbPromise = null;
 
 async function initDB() {
-    return new Promise((resolve, reject) => {
+    if (dbPromise) return dbPromise;
+    
+    dbPromise = new Promise((resolve, reject) => {
+        console.log('[DB] Initialization...');
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
         request.onupgradeneeded = (event) => {
@@ -24,14 +28,18 @@ async function initDB() {
 
         request.onsuccess = (event) => {
             db = event.target.result;
+            console.log('[DB] Connected.');
             resolve(db);
         };
 
         request.onerror = (event) => {
             console.error('[DB] Error opening database:', event.target.error);
+            dbPromise = null; // Allow retry
             reject(event.target.error);
         };
     });
+    
+    return dbPromise;
 }
 
 /**
