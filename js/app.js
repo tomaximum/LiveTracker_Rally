@@ -295,6 +295,7 @@ function unloadGPX(id) {
 
 function updateParticipant(data) {
     const { id, name, lat, lng, color, avatar, lastMoved, stopped } = data;
+    console.log(`[App] Réception position pour ${name || id} : ${lat}, ${lng}`);
     let { displaySpeed, history, hidden } = data;
 
     // Load existing participant data if available
