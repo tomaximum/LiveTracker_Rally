@@ -23,7 +23,8 @@ const state = {
         showWaypoints: true,
         showPilotTraces: true,
         telegramToken: '',
-        offlineThresh: 1 // v1.3.3
+        offlineThresh: 1, // v1.3.3
+        movementThresh: 20 // v1.3.4 (GPS Filter)
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -308,9 +309,10 @@ function updateParticipant(data) {
         history = history || existingP.data.history || [];
         hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
         
-        // v1.3.3: Only update lastMoved if pilot moved > 5m to avoid resetting immobile alerts
+        // v1.3.4: Only update lastMoved if pilot moved > movementThresh to avoid resetting immobile alerts due to GPS jitter
+        const mThresh = state.settings.movementThresh || 20;
         const distMoved = haversineDistance({lat, lng}, {lat: existingP.data.lat, lng: existingP.data.lng});
-        if (distMoved > 5) {
+        if (distMoved > mThresh) {
             participantData.lastMoved = now;
         } else {
             participantData.lastMoved = existingP.data.lastMoved || (now - 1000);
@@ -682,21 +684,31 @@ function addAlertToLog(alert) {
 }
 
 function renderAlertList() {
-    const list = document.getElementById('alerts-list');
-    if (state.alertLog.length === 0) {
-        list.innerHTML = '<div class="empty-state" style="padding:10px 0"><div>Aucune alerte</div></div>';
+    list.innerHTML = '';
+    // v1.3.4: Filter out acknowledged alerts (silenced by user)
+    const visibleAlerts = state.alertLog.filter(a => {
+        const isAck = state.alertEngine && state.alertEngine.isAcknowledged(a.participantId, a.type);
+        const isResolution = a.type === AlertType.MOVING_AGAIN || a.type === AlertType.BACK_ON_ROUTE;
+        return !isAck || isResolution; // Show resolutions, hide acknowledged problems
+    });
+
+    if (visibleAlerts.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding:10px 0"><div>Aucune alerte active</div></div>';
         return;
     }
-    list.innerHTML = state.alertLog.slice(0, 15).map(a => {
+
+    list.innerHTML = visibleAlerts.slice(0, 15).map(a => {
         const t = new Date(a.ts);
         const ts = t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const isAck = state.alertEngine && state.alertEngine.isAcknowledged(a.participantId, a.type);
         const isResolution = a.type === AlertType.MOVING_AGAIN || a.type === AlertType.BACK_ON_ROUTE;
 
-        return `<div class="alert-item type-${a.type}${isAck ? ' ack' : ''}">
+        return `<div class="alert-item type-${a.type}${isAck ? ' ack' : ''}" 
+                 onclick="window.focusParticipant('${a.participantId}')" 
+                 style="cursor:pointer" title="Cliquer pour centrer sur le pilote">
       <div class="alert-ts">${ts}</div>
-      <div style="flex:1">${a.message}</div>
-      ${(!isAck && !isResolution) ? `<button class="btn btn-icon" onclick="window.acknowledgeAlert('${a.participantId}', '${a.type}')" title="Acquitter">🔕</button>` : ''}
+      <div style="flex:1; padding: 0 4px;">${a.message}</div>
+      ${(!isAck && !isResolution) ? `<button class="btn btn-icon" onclick="event.stopPropagation(); window.acknowledgeAlert('${a.participantId}', '${a.type}')" title="Acquitter">🔕</button>` : ''}
     </div>`;
     }).join('');
 }
@@ -882,6 +894,14 @@ function applySettings() {
         offSlider.oninput = () => { if (val) val.textContent = offSlider.value + ' min'; };
     }
 
+    const movSlider = document.getElementById('s-move-thresh');
+    if (movSlider) {
+        movSlider.value = state.settings.movementThresh || 20;
+        const val = document.getElementById('s-move-val');
+        if (val) val.textContent = movSlider.value + ' m';
+        movSlider.oninput = () => { if (val) val.textContent = movSlider.value + ' m'; };
+    }
+
     if (logSlider) {
         logSlider.value = state.settings.logInterval || 10;
         const val = document.getElementById('s-log-interval-val');
@@ -914,6 +934,9 @@ function collectSettings() {
 
     const sOff = document.getElementById('s-offline-thresh');
     if (sOff) state.settings.offlineThresh = parseInt(sOff.value);
+
+    const sMov = document.getElementById('s-move-thresh');
+    if (sMov) state.settings.movementThresh = parseInt(sMov.value);
 
     const sLog = document.getElementById('s-log-interval');
     if (sLog) state.settings.logInterval = parseInt(sLog.value);
@@ -1193,7 +1216,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.3\n` +
+            const stats = `📊 Stats LiveTrack v1.3.4\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +

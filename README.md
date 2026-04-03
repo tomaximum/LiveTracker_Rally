@@ -9,6 +9,12 @@
 ---
 
 ## ✨ Points forts (Cloud Only)
+### 🆕 v1.3.4 - Filtrage GPS & UX (Avril 2026)
+- **🛰️ Filtre GPS (Seuil de Mouvement)** : Réglage (5-100m) pour éviter les fausses alertes dues au brouillage GPS à l'arrêt.
+- **🎯 Focus Alerte** : Cliquer sur une alerte dans la liste centre automatiquement la carte sur le pilote.
+- **🧹 Nettoyage Intelligent** : Les alertes acquittées disparaissent de la liste jusqu'au prochain incident.
+- **🛠️ Refonte UI** : Indicateurs de version unifiés et curseurs de réglages plus fluides.
+
 ### 🆕 v1.3.3 - Maintenance & Acquittement (Avril 2026)
 - **🔕 Acquittement des Alertes** : Bouton permettant de couper le son d'une alerte en cours.
 - **📍 Filtrage des Alertes par Visibilité** : La déviation de trace n'est calculée que sur les traces GPX affichées.
