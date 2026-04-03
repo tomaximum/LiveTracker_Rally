@@ -299,6 +299,7 @@ function updateParticipant(data) {
 
     // Load existing participant data if available
     const now = Date.now();
+    const existingP = state.participants.get(id);
     let participantData = { ...data };
 
     if (existingP) {
