@@ -13,6 +13,7 @@ class AlertEngine {
     constructor(settings) {
         this.settings = settings; // { offRouteThresh (m), immobileThresh (min) }
         this.activeAlerts = new Map(); // participantId → Set of AlertType
+        this.acknowledged = new Map(); // participantId → Set of AlertType
         this.onAlert = null;   // callback(alert)
         this.onResolve = null; // callback(alert)
     }
@@ -32,7 +33,10 @@ class AlertEngine {
         const pid = participant.id;
 
         if (!this.activeAlerts.has(pid)) this.activeAlerts.set(pid, new Set());
+        if (!this.acknowledged.has(pid)) this.acknowledged.set(pid, new Set());
+        
         const active = this.activeAlerts.get(pid);
+        const acknowledged = this.acknowledged.get(pid);
 
         // ── Off-route check ──────────────────────────────────────────────────
         if (routePoints && routePoints.length > 1) {
@@ -51,9 +55,13 @@ class AlertEngine {
                     color: '#f59e0b'
                 };
                 alerts.push(alert);
-                this.onAlert && this.onAlert(alert);
+                // Only trigger callback if not already acknowledged (unlikely for new alert but safe)
+                if (!acknowledged.has(AlertType.OFF_ROUTE)) {
+                    this.onAlert && this.onAlert(alert);
+                }
             } else if (dist <= thresh && active.has(AlertType.OFF_ROUTE)) {
                 active.delete(AlertType.OFF_ROUTE);
+                acknowledged.delete(AlertType.OFF_ROUTE); // Reset ack on resolve
                 const alert = {
                     type: AlertType.BACK_ON_ROUTE,
                     participantId: pid,
@@ -85,9 +93,12 @@ class AlertEngine {
                 color: '#ef4444'
             };
             alerts.push(alert);
-            this.onAlert && this.onAlert(alert);
+            if (!acknowledged.has(AlertType.IMMOBILE)) {
+                this.onAlert && this.onAlert(alert);
+            }
         } else if (stationaryDuration <= immobileMs && active.has(AlertType.IMMOBILE)) {
             active.delete(AlertType.IMMOBILE);
+            acknowledged.delete(AlertType.IMMOBILE); // Reset ack on resolve
             const alert = {
                 type: AlertType.MOVING_AGAIN,
                 participantId: pid,
@@ -101,6 +112,17 @@ class AlertEngine {
         }
 
         return alerts;
+    }
+
+    acknowledge(pid, type) {
+        if (!this.acknowledged.has(pid)) this.acknowledged.set(pid, new Set());
+        this.acknowledged.get(pid).add(type);
+        console.log(`[AlertEngine] Acknowledged ${type} for ${pid}`);
+    }
+
+    isAcknowledged(pid, type) {
+        const ack = this.acknowledged.get(pid);
+        return ack ? ack.has(type) : false;
     }
 
     getActiveAlertsForParticipant(pid) {

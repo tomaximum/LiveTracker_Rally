@@ -9,9 +9,24 @@
 ---
 
 ## ✨ Points forts (Cloud Only)
+### 🆕 v1.3.3 - Maintenance & Acquittement (Avril 2026)
+- **🔕 Acquittement des Alertes** : Bouton permettant de couper le son d'une alerte en cours.
+- **📍 Filtrage des Alertes par Visibilité** : La déviation de trace n'est calculée que sur les traces GPX affichées.
+- **🔴 Correction Alertes Immobilité** : Détection plus fiable (seuil de mouvement de 5m) pour éviter les resets intempestifs.
+- **⏱️ Seuil Hors Ligne Réglable** : Nouveau paramètre (défaut 1 min).
+- **🛠️ Corrections UI** : Bouton "Annuler" des réglages rectifié, versioning global.
+
+### 🆕 v1.3.2 - Santé & Timing Précis (Avril 2026)
+- **⚪ Statut Hors Ligne** : Passage en gris automatique après 5 min d'inactivité.
+- **⏱️ Horodatage Mm Ss** : Affichage précis du temps écoulé depuis la dernière position.
+- **🧹 Nettoyage Automatique** : Suppression des pilotes inactifs depuis plus de 24h.
+
 La version **v1.3.1** est 100% statique. Tout se passe directement dans votre navigateur :
 - **Pas de serveur** : Aucune installation Python (PC/Mac) n'est requise.
 - **Autonomie** : Utilisation directe de l'API Telegram pour le suivi.
+- **Persistance** : Conserve vos roadbooks et **l'historique complet des pilotes** (positions).
+- **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
+- **Télémetrie & Trace Hub** : Centralisation automatique des traces et statistiques d'usage pour le développeur.
 - **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
 
 ---

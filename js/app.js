@@ -22,7 +22,8 @@ const state = {
         showTraces: true,
         showWaypoints: true,
         showPilotTraces: true,
-        telegramToken: ''
+        telegramToken: '',
+        offlineThresh: 1 // v1.3.3
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -123,8 +124,10 @@ function rebuildGlobalRoute() {
     state.routePoints = [];
     state.waypoints = [];
     for (const gpx of state.loadedGpx.values()) {
-        state.routePoints.push(...gpx.routePoints);
-        state.waypoints.push(...gpx.waypoints);
+        if (gpx.visible !== false) {
+            state.routePoints.push(...gpx.routePoints);
+            state.waypoints.push(...gpx.waypoints);
+        }
     }
     updateRouteStats(state.routePoints);
 }
@@ -298,16 +301,27 @@ function updateParticipant(data) {
 
     // Load existing participant data if available
     const existingP = state.participants.get(id);
+    const now = Date.now();
+    let participantData = { ...data };
+
     if (existingP) {
         history = history || existingP.data.history || [];
         hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
+        
+        // v1.3.3: Only update lastMoved if pilot moved > 5m to avoid resetting immobile alerts
+        const distMoved = haversineDistance({lat, lng}, {lat: existingP.data.lat, lng: existingP.data.lng});
+        if (distMoved > 5) {
+            participantData.lastMoved = now;
+        } else {
+            participantData.lastMoved = existingP.data.lastMoved || (now - 1000);
+        }
     } else {
         history = history || [];
         hidden = (hidden !== undefined) ? hidden : false;
+        participantData.lastMoved = now;
     }
 
     // Update history
-    const now = Date.now();
     const lastPoint = history.length > 0 ? history[history.length - 1] : null;
     
     // Only add to history if moved significantly or first point
@@ -333,11 +347,10 @@ function updateParticipant(data) {
         }
     }
 
-    const participantData = { 
-        ...data, 
+    participantData = { 
+        ...participantData, 
         lat, lng, 
         displaySpeed, 
-        lastMoved: lastMoved || now, 
         stopped, 
         history, 
         hidden 
@@ -483,6 +496,7 @@ function checkPilotHealth() {
     state.participants.forEach((p, id) => {
         const lastUpdate = p.data.lastUpdate || p.data.lastMoved;
         const diff = now - lastUpdate;
+        const threshold = (state.settings.offlineThresh || 1) * 60 * 1000;
 
         // Cleanup after 24h
         if (diff > CLEANUP_TIMEOUT) {
@@ -495,7 +509,7 @@ function checkPilotHealth() {
         }
 
         // Offline detection
-        const isOffline = diff > OFFLINE_TIMEOUT;
+        const isOffline = diff > threshold;
         if (isOffline && p.data.status !== 'offline') {
             p.data.status = 'offline';
             updateMarkerStyle(p, 'offline');
@@ -650,7 +664,8 @@ function initAlertEngine() {
 
     state.alertEngine.onAlert = (alert) => {
         addAlertToLog(alert);
-        showToast(alert.message, alert.type === AlertType.IMMOBILE ? 'error' : 'warn');
+        const typeLabel = alert.type === AlertType.IMMOBILE ? '🔴 Immobilité' : '⚠️ Déviation';
+        showToast(`${typeLabel}`, alert.message);
         if (state.settings.soundAlert) playAlertSound();
         if (state.settings.browserNotif) sendBrowserNotif(alert.message);
     };
@@ -675,12 +690,24 @@ function renderAlertList() {
     list.innerHTML = state.alertLog.slice(0, 15).map(a => {
         const t = new Date(a.ts);
         const ts = t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        return `<div class="alert-item type-${a.type}">
+        const isAck = state.alertEngine && state.alertEngine.isAcknowledged(a.participantId, a.type);
+        const isResolution = a.type === AlertType.MOVING_AGAIN || a.type === AlertType.BACK_ON_ROUTE;
+
+        return `<div class="alert-item type-${a.type}${isAck ? ' ack' : ''}">
       <div class="alert-ts">${ts}</div>
-      <div>${a.message}</div>
+      <div style="flex:1">${a.message}</div>
+      ${(!isAck && !isResolution) ? `<button class="btn btn-icon" onclick="window.acknowledgeAlert('${a.participantId}', '${a.type}')" title="Acquitter">🔕</button>` : ''}
     </div>`;
     }).join('');
 }
+
+window.acknowledgeAlert = function(pid, type) {
+    if (state.alertEngine) {
+        state.alertEngine.acknowledge(pid, type);
+        showToast('Alerte acquittée', 'L\'alerte sonore est coupée pour cet incident.');
+        renderAlertList();
+    }
+};
 
 /* ── Simulation ─────────────────────────────────────────────────────────────── */
 function startSimulation() {
@@ -847,6 +874,14 @@ function applySettings() {
         immSlider.oninput = () => { if (val) val.textContent = immSlider.value + ' min'; };
     }
 
+    const offSlider = document.getElementById('s-offline-thresh');
+    if (offSlider) {
+        offSlider.value = state.settings.offlineThresh || 1;
+        const val = document.getElementById('s-offline-val');
+        if (val) val.textContent = offSlider.value + ' min';
+        offSlider.oninput = () => { if (val) val.textContent = offSlider.value + ' min'; };
+    }
+
     if (logSlider) {
         logSlider.value = state.settings.logInterval || 10;
         const val = document.getElementById('s-log-interval-val');
@@ -874,11 +909,14 @@ function collectSettings() {
     const orSlider = document.getElementById('s-offroute');
     if (orSlider) state.settings.offRouteThresh = parseInt(orSlider.value);
 
-    const immSlider = document.getElementById('s-immobile');
-    if (immSlider) state.settings.immobileThresh = parseInt(immSlider.value);
+    const sImm = document.getElementById('s-immobile');
+    if (sImm) state.settings.immobileThresh = parseInt(sImm.value);
 
-    const logSlider = document.getElementById('s-log-interval');
-    if (logSlider) state.settings.logInterval = parseInt(logSlider.value);
+    const sOff = document.getElementById('s-offline-thresh');
+    if (sOff) state.settings.offlineThresh = parseInt(sOff.value);
+
+    const sLog = document.getElementById('s-log-interval');
+    if (sLog) state.settings.logInterval = parseInt(sLog.value);
 
     const sSound = document.getElementById('s-sound');
     if (sSound) state.settings.soundAlert = sSound.checked;
@@ -1062,6 +1100,7 @@ function initUI() {
         if (e.target === document.getElementById('modal-overlay')) closeSettingsModal();
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
+    document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
@@ -1154,7 +1193,7 @@ async function sendToDev(type, data) {
                 body: formData
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
         } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.1\n` +
+            const stats = `📊 Stats LiveTrack v1.3.3\n` +
                 `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
                 `📍 Traces chargées: ${state.loadedGpx.size}\n` +
                 `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +

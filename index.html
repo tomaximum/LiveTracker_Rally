@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LiveTrack Rally v1.3.0 — Suivi en temps réel</title>
+  <title>LiveTrack Rally - Dashboard v1.3.3</title>
   <meta name="description"
     content="La version v1.3.0 est 100% statique. Tout se passe directement dans votre navigateur :
 - Pas de serveur : Aucune installation Python (PC/Mac) n'est requise.
@@ -35,7 +35,7 @@
       <button id="mobile-menu-btn" class="btn" style="display:none;padding:5px 10px;font-size:18px">☰</button>
       <div class="logo">
         <div class="dot">📡</div>
-        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v1.3.1</span>
+        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v1.3.3</span>
       </div>
 
       <div class="topbar-spacer"></div>
@@ -56,7 +56,7 @@
       <!-- GPX Drop Zone & Library -->
       <div class="sidebar-header" style="display:flex;align-items:center;">📍 Traces GPX</div>
       <div id="gpx-drop">
-        <div class="drop-icon">🗂️</div>
+        <div class="app-version">v1.3.3</div>
         <div class="drop-text">Glissez un fichier GPX ici</div>
         <div class="drop-hint">ou cliquez pour parcourir</div>
       </div>
@@ -204,6 +204,17 @@
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
             Alerte si un pilote ne bouge plus pendant plus de X minutes
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Seuil Hors Ligne</label>
+          <div class="range-row">
+            <input type="range" id="s-offline-thresh" min="1" max="60" step="1" value="1" />
+            <span class="range-val" id="s-offline-val">1 min</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Délai avant qu'un pilote ne soit considéré comme "Hors Ligne"
           </div>
         </div>
 
