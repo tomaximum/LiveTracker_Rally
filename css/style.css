@@ -227,6 +227,7 @@ body {
 /* Participant List */
 #participants-section {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -234,6 +235,7 @@ body {
 
 #participants-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px;
   display: flex;
