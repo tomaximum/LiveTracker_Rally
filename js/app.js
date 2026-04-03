@@ -13,14 +13,15 @@ const state = {
     alertEngine: null,
     alertLog: [],           // [{...alert}]
     settings: {
-        offRouteThresh: 500,
-        immobileThresh: 2,
+        offRouteThresh: 200,
+        immobileThresh: 5,
+        offlineThresh: 2, // Default 2 min
+        movementThresh: 20, // Default 20m filter
         logInterval: 10,
         soundAlert: true,
         browserNotif: false,
+        simMode: false,
         showRadii: true,
-        showTraces: true,
-        showWaypoints: true,
         showPilotTraces: true,
         telegramToken: ''
     },
@@ -297,17 +298,31 @@ function updateParticipant(data) {
     let { displaySpeed, history, hidden } = data;
 
     // Load existing participant data if available
-    const existingP = state.participants.get(id);
+    const now = Date.now();
+    let participantData = { ...data };
+
     if (existingP) {
         history = history || existingP.data.history || [];
         hidden = (hidden !== undefined) ? hidden : (existingP.data.hidden !== undefined ? existingP.data.hidden : false);
+        
+        // v1.3.3: Use movementThresh to filter GPS jitter and only reset lastMoved if real movement occurs
+        const mThresh = state.settings.movementThresh || 20;
+        const lastLat = existingP.data.lat;
+        const lastLng = existingP.data.lng;
+        const distMoved = (lastLat != null) ? haversineDistance({lat, lng}, {lat: lastLat, lng: lastLng}) : 100;
+
+        if (distMoved > mThresh) {
+            participantData.lastMoved = now;
+        } else {
+            participantData.lastMoved = existingP.data.lastMoved || (now - 1000);
+        }
     } else {
         history = history || [];
         hidden = (hidden !== undefined) ? hidden : false;
+        participantData.lastMoved = now;
     }
 
     // Update history
-    const now = Date.now();
     const lastPoint = history.length > 0 ? history[history.length - 1] : null;
     
     // Only add to history if moved significantly or first point
@@ -333,11 +348,10 @@ function updateParticipant(data) {
         }
     }
 
-    const participantData = { 
-        ...data, 
+    participantData = { 
+        ...participantData, 
         lat, lng, 
         displaySpeed, 
-        lastMoved: lastMoved || now, 
         stopped, 
         history, 
         hidden 
@@ -494,8 +508,9 @@ function checkPilotHealth() {
             return;
         }
 
-        // Offline detection
-        const isOffline = diff > OFFLINE_TIMEOUT;
+        // Offline detection (User adjustable in v1.3.3)
+        const offlineMs = (state.settings.offlineThresh || 2) * 60 * 1000;
+        const isOffline = diff > offlineMs;
         if (isOffline && p.data.status !== 'offline') {
             p.data.status = 'offline';
             updateMarkerStyle(p, 'offline');
@@ -866,6 +881,22 @@ function applySettings() {
     const sRadii = document.getElementById('s-show-radii');
     if (sRadii) sRadii.checked = state.settings.showRadii !== false;
 
+    const offSlider = document.getElementById('s-offline-thresh');
+    if (offSlider) {
+        offSlider.value = state.settings.offlineThresh || 2;
+        const val = document.getElementById('s-offline-val');
+        if (val) val.textContent = offSlider.value + ' min';
+        offSlider.oninput = () => { if (val) val.textContent = offSlider.value + ' min'; };
+    }
+
+    const movSlider = document.getElementById('s-move-thresh');
+    if (movSlider) {
+        movSlider.value = state.settings.movementThresh || 20;
+        const val = document.getElementById('s-move-val');
+        if (val) val.textContent = movSlider.value + ' m';
+        movSlider.oninput = () => { if (val) val.textContent = movSlider.value + ' m'; };
+    }
+
     const sToken = document.getElementById('s-token');
     if (sToken) sToken.value = state.settings.telegramToken || '';
 }
@@ -879,6 +910,12 @@ function collectSettings() {
 
     const logSlider = document.getElementById('s-log-interval');
     if (logSlider) state.settings.logInterval = parseInt(logSlider.value);
+
+    const offSlider = document.getElementById('s-offline-thresh');
+    if (offSlider) state.settings.offlineThresh = parseInt(offSlider.value);
+
+    const movSlider = document.getElementById('s-move-thresh');
+    if (movSlider) state.settings.movementThresh = parseInt(movSlider.value);
 
     const sSound = document.getElementById('s-sound');
     if (sSound) state.settings.soundAlert = sSound.checked;

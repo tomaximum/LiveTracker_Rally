@@ -208,6 +208,28 @@
         </div>
 
         <div class="form-group">
+          <label>Sensibilité GPS (Filtre d'arrêt)</label>
+          <div class="range-row">
+            <input type="range" id="s-move-thresh" min="5" max="100" step="5" value="20" />
+            <span class="range-val" id="s-move-val">20 m</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Distance minimale de mouvement pour réinitialiser l'alerte d'immobilité
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Délai d'absence (Hors Ligne)</label>
+          <div class="range-row">
+            <input type="range" id="s-offline-thresh" min="1" max="60" step="1" value="2" />
+            <span class="range-val" id="s-offline-val">2 min</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Délai sans données avant de marquer un pilote comme "Hors Ligne"
+          </div>
+        </div>
+
+        <div class="form-group">
           <label>Intervalle Log Position</label>
           <div class="range-row">
             <input type="range" id="s-log-interval" min="2" max="30" step="1" value="10" />
@@ -267,21 +289,6 @@
     <div id="modal-pilots" class="modal-box">
       <div class="modal-title">👥 Gestion des Pilotes</div>
 
-      <div class="modal-section">
-        <div class="modal-section-title">Ajouter un pilote manuellement</div>
-        <div style="display:flex;gap:10px;margin-bottom:10px">
-          <input type="text" id="new-pilot-name" placeholder="Nom du pilote (ex: Dupont)" style="flex:1" />
-          <select id="new-pilot-icon"
-            style="background:var(--bg-card);border:1px solid var(--border);color:white;padding:5px;border-radius:4px;font-size:16px">
-            <option value="🏍️">🏍️ Moto</option>
-            <option value="🚗">🚗 Voiture</option>
-            <option value="🚙">🚙 4x4</option>
-            <option value="🛻">🛻 Pick-up</option>
-            <option value="🚁">🚁 Hélicoptère</option>
-          </select>
-          <button class="btn btn-accent" id="btn-save-pilot">Ajouter</button>
-        </div>
-      </div>
 
       <div class="modal-section">
         <div class="modal-section-title">Invitation Telegram (Automatique)</div>
