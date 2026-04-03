@@ -12,9 +12,6 @@
 La version **v1.3.0** est 100% statique. Tout se passe directement dans votre navigateur :
 - **Pas de serveur** : Aucune installation Python (PC/Mac) n'est requise.
 - **Autonomie** : Utilisation directe de l'API Telegram pour le suivi.
-- **Persistance** : Conserve vos roadbooks et **l'historique complet des pilotes** (positions).
-- **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
-- **Télémetrie & Trace Hub** : Centralisation automatique des traces et statistiques d'usage pour le développeur.
 - **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
 
 ---
