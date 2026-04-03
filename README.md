@@ -45,4 +45,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ---
-*Développé par Antigravity, Gemini et Tomaximum — Version 1.1.1 Cloud Only*
+*Développé par Antigravity, Gemini et Tomaximum — Version 1.1.2 Cloud Only*
