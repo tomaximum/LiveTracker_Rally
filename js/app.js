@@ -1055,7 +1055,7 @@ async function fetchGPXLibrary() {
                 <div class="gpx-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:var(--bg-card);padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
                     <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" title="Afficher/Masquer" />
                     <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${id}')">${g.name}</span>
-                    <input type="color" value="${g.color || '#3b82f6'}" style="width:16px;height:16px;border:none;border-radius:3px;cursor:pointer;padding:0" onchange="window.changeGPXColor('${id}', this.value)" />
+                    <input type="color" value="${g.color || '#3b82f6'}" style="width:30px;height:30px;border:none;border-radius:4px;cursor:pointer;padding:0;flex-shrink:0" onchange="window.changeGPXColor('${id}', this.value)" />
                     <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="window.unloadGPX('${id}')">🗑️</button>
                 </div>
             `;
