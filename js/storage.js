@@ -35,14 +35,20 @@ async function initDB() {
 }
 
 /**
- * Save a GPX file to IndexedDB
+ * Save a GPX file to IndexedDB with metadata (color, visibility)
  */
-async function dbSaveGpx(id, name, xml) {
+async function dbSaveGpx(id, name, xml, color, visible) {
     if (!db) await initDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_GPX], 'readwrite');
         const store = transaction.objectStore(STORE_GPX);
-        const request = store.put({ id, name, xml, timestamp: Date.now() });
+        const payload = { 
+            id, name, xml, 
+            color: color || '#3b82f6', 
+            visible: visible !== undefined ? visible : true,
+            timestamp: Date.now() 
+        };
+        const request = store.put(payload);
 
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);

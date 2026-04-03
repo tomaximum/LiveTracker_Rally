@@ -140,7 +140,7 @@ function updateRouteStats(route) {
     if (eEl) eEl.textContent = eleGain.toFixed(0) + ' m';
 }
 
-function loadGPX(xmlText, name, id, fromSave = false) {
+function loadGPX(xmlText, name, id, fromSave = false, color = '#3b82f6', visible = true) {
     try {
         if (!state.map) { console.error('Map is null'); return; }
         
@@ -152,10 +152,10 @@ function loadGPX(xmlText, name, id, fromSave = false) {
 
         const latlngs = parsed.route.map(p => [p.lat, p.lng]);
         const routeLayer = L.polyline(latlngs, {
-            color: '#3b82f6', weight: 4, opacity: 0.8
+            color: color || '#3b82f6', weight: 4, opacity: 0.8
         });
         
-        if (state.settings.showTraces !== false) routeLayer.addTo(state.map);
+        if (visible !== false) routeLayer.addTo(state.map);
 
         const wpLayer = L.layerGroup();
         if (state.settings.showWaypoints !== false) wpLayer.addTo(state.map);
@@ -189,8 +189,8 @@ function loadGPX(xmlText, name, id, fromSave = false) {
             waypoints: parsed.waypoints,
             layers: [routeLayer],
             wpLayer: wpLayer,
-            color: '#3b82f6',
-            visible: true
+            color: color || '#3b82f6',
+            visible: visible !== undefined ? visible : true
         });
 
         rebuildGlobalRoute();
@@ -200,7 +200,7 @@ function loadGPX(xmlText, name, id, fromSave = false) {
         }
         
         if (!fromSave) {
-            saveGpxToLocal(xmlText, name, id);
+            saveGpxToLocal(xmlText, name, id, color, visible);
         }
 
         fetchGPXLibrary();
@@ -220,9 +220,9 @@ function uploadGPX(name, content) {
     loadGPX(content, name, id);
 }
 
-async function saveGpxToLocal(xml, name, id) {
+async function saveGpxToLocal(xml, name, id, color, visible) {
     try {
-        await dbSaveGpx(id, name, xml);
+        await dbSaveGpx(id, name, xml, color, visible);
     } catch (e) {
         console.warn('[Storage] Error saving GPX to IndexedDB', e);
         showToast('Erreur de stockage GPX', 'error');
@@ -235,8 +235,8 @@ async function restoreGpxFromLocal() {
         const storedGpx = await dbGetAllGpx();
         console.log(`[Storage] ${storedGpx.length} trace(s) trouvée(s).`);
         storedGpx.forEach(g => {
-            console.log(`[Storage] Restauration de : ${g.name}`);
-            loadGPX(g.xml, g.name, g.id, true);
+            console.log(`[Storage] Restauration de : ${g.name} (Couleur: ${g.color})`);
+            loadGPX(g.xml, g.name, g.id, true, g.color, g.visible);
         });
     } catch (e) { 
         console.error('[Storage] Erreur de restauration GPX :', e); 
@@ -1095,6 +1095,9 @@ window.toggleLibraryGPX = function(id, checked) {
         }
         rebuildGlobalRoute();
         fetchGPXLibrary();
+
+        // Save new visibility state
+        saveGpxToLocal(gpx.xml, gpx.name, gpx.id, gpx.color, gpx.visible);
     }
 }
 
@@ -1108,6 +1111,9 @@ window.changeGPXColor = function(id, color) {
             });
         }
         fetchGPXLibrary(); // Update list indicators
+
+        // Save new color to storage
+        saveGpxToLocal(gpx.xml, gpx.name, gpx.id, gpx.color, gpx.visible);
     }
 }
 
