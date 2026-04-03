@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.settings.telegramToken) {
         initTelegramClient(state.settings.telegramToken);
     }
+    
+    // Restore GPX from local storage
+    restoreGpxFromLocal();
 });
 
 /* ── Map Initialization ─────────────────────────────────────────────────────── */
@@ -136,7 +139,7 @@ function updateRouteStats(route) {
     if (eEl) eEl.textContent = eleGain.toFixed(0) + ' m';
 }
 
-function loadGPX(xmlText, name, id) {
+function loadGPX(xmlText, name, id, fromSave = false) {
     try {
         if (!state.map) { console.error('Map is null'); return; }
         
@@ -153,13 +156,11 @@ function loadGPX(xmlText, name, id) {
 
         const wpLayer = L.layerGroup().addTo(state.map);
         parsed.waypoints.forEach((wp, idx) => {
-            // Use parsed radius if available, otherwise default to 10m
             const radius = wp.validationRadius !== undefined ? wp.validationRadius : 10;
-
             const marker = L.circle([wp.lat, wp.lng], {
                 radius: radius,
                 color: '#10b981', fill: false, dashArray: '5,5',
-                weight: 1 // Thin line as requested
+                weight: 1
             }).addTo(wpLayer);
             
             let popupContent = `<b>#${idx + 1}</b>`;
@@ -173,7 +174,7 @@ function loadGPX(xmlText, name, id) {
         });
 
         state.loadedGpx.set(id, {
-            id, name,
+            id, name, xml: xmlText,
             routePoints: parsed.route,
             waypoints: parsed.waypoints,
             layers: [routeLayer],
@@ -190,12 +191,49 @@ function loadGPX(xmlText, name, id) {
             state.map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
         }
         
-        if (typeof fetchGPXLibrary === 'function') fetchGPXLibrary();
-        showToast(`Trace "${name}" chargée`);
+        // Save to local storage if not already from save
+        if (!fromSave) {
+            saveGpxToLocal(xmlText, name, id);
+        }
+
+        fetchGPXLibrary();
+        if (!fromSave) showToast(`Trace "${name}" chargée`);
     } catch (e) {
         console.error('[GPX] Error loading:', e);
         showToast('Erreur chargement GPX', 'error');
     }
+}
+
+/**
+ * Entry point for new GPX file uploads (from file input or drop zone).
+ * Generates a unique ID and calls loadGPX.
+ */
+function uploadGPX(name, content) {
+    const id = 'gpx_' + Date.now();
+    loadGPX(content, name, id);
+}
+
+function saveGpxToLocal(xml, name, id) {
+    try {
+        const key = 'gpx_' + id;
+        localStorage.setItem(key, JSON.stringify({ id, name, xml }));
+    } catch (e) {
+        console.warn('[Storage] Error saving GPX (probably size limit)', e);
+    }
+}
+
+function restoreGpxFromLocal() {
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('gpx_')) {
+                const data = JSON.parse(localStorage.getItem(key));
+                if (data && data.xml) {
+                    loadGPX(data.xml, data.name, data.id, true);
+                }
+            }
+        }
+    } catch (e) { console.error('[Storage] Error restoring GPX', e); }
 }
 
 function unloadGPX(id) {
@@ -204,8 +242,12 @@ function unloadGPX(id) {
         if (gpx.layers) gpx.layers.forEach(l => { if (state.map && state.map.hasLayer(l)) state.map.removeLayer(l); });
         if (gpx.wpLayer && state.map && state.map.hasLayer(gpx.wpLayer)) state.map.removeLayer(gpx.wpLayer);
         state.loadedGpx.delete(id);
+        
+        // Remove from local storage
+        localStorage.removeItem('gpx_' + id);
+
         rebuildGlobalRoute();
-        if (typeof fetchGPXLibrary === 'function') fetchGPXLibrary();
+        fetchGPXLibrary();
     }
 }
 function updateParticipant(data) {
@@ -864,10 +906,7 @@ function initUI() {
         showToast(`Pilote ${name} ajouté`);
     });
 
-    // Center on route
-    document.getElementById('btn-fit').addEventListener('click', () => {
-        if (state.routeLayer) state.map.fitBounds(state.routeLayer.getBounds(), { padding: [40, 40] });
-    });
+
 
     // Refresh participant list periodically (time since last update)
     setInterval(renderParticipantList, 30000);
@@ -903,22 +942,9 @@ let qrCode = null;
 async function openPilotsModal() {
     document.getElementById('modal-pilots-overlay').classList.add('open');
 
-    // Try to generate QR code if we have a token or the server is running
+    // Try to generate QR code if we have a token
     if (state.settings.telegramToken) {
         fetchBotInfo(state.settings.telegramToken);
-    } else {
-        // Try via API endpoint if standalone app
-        try {
-            const res = await fetch('/api/token');
-            const data = await res.json();
-            if (data.token) {
-                fetchBotInfo(data.token);
-                return;
-            }
-        } catch (e) { }
-
-        document.getElementById('qr-placeholder').style.display = 'flex';
-        document.getElementById('qr-placeholder').textContent = 'Assurez-vous d\'avoir configuré le fichier telegram_token.txt avec le token.';
     }
 }
 
@@ -960,66 +986,25 @@ function closePilotsModal() {
 /* ── GPX Library API ────────────────────────────────────────────────────────── */
 async function fetchGPXLibrary() {
     const container = document.getElementById('gpx-library-list');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const isAutonomous = !!state.settings.telegramToken;
-
-    if (isAutonomous) {
+    if (container) {
+        container.innerHTML = '';
         if (state.loadedGpx.size === 0) {
-            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace chargée</div>';
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace</div>';
             return;
         }
-        renderLocalTraces(container);
-    } else {
-        try {
-            const res = await fetch('/api/gpx');
-            const list = await res.json();
 
-            if (list.length === 0 && state.loadedGpx.size === 0) {
-                container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace</div>';
-                return;
-            }
-
-            const serverIds = list.map(item => item.id);
-
-            list.forEach(item => {
-                const isLoaded = state.loadedGpx.has(item.id);
-                const gpxObj = isLoaded ? state.loadedGpx.get(item.id) : null;
-                const styleAttr = isLoaded ? `border-left: 3px solid ${gpxObj.color || '#3b82f6'}` : '';
-
-                container.innerHTML += `
-                    <div class="gpx-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:var(--bg-card);padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
-                        <input type="checkbox" onchange="window.toggleLibraryGPX('${item.id}', this.checked)" ${isLoaded && gpxObj.visible !== false ? 'checked' : ''} title="Afficher/Masquer" />
-                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${item.id}')">${item.name}</span>
-                        ${isLoaded ? `<input type="color" value="${gpxObj.color || '#3b82f6'}" style="width:16px;height:16px;border:none;border-radius:3px;cursor:pointer;padding:0" onchange="window.changeGPXColor('${item.id}', this.value)" />` : ''}
-                        <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="window.confirmDeleteGPX('${item.id}', '${item.name.replace(/'/g, "\\'")}')">🗑️</button>
-                    </div>
-                `;
-            });
-
-            renderLocalTraces(container, serverIds);
-
-        } catch (e) {
-            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Impossible de charger la bibliothèque</div>';
-        }
-    }
-}
-
-function renderLocalTraces(container, filterIds = []) {
-    state.loadedGpx.forEach((g, id) => {
-        if (filterIds.includes(parseInt(id)) || filterIds.includes(id) || id.toString().includes('local-')) {
+        state.loadedGpx.forEach((g, id) => {
             const styleAttr = `border-left: 3px solid ${g.color || '#3b82f6'}`;
             container.innerHTML += `
                 <div class="gpx-item" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:var(--bg-card);padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
                     <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" title="Afficher/Masquer" />
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${id}')">${g.name} (Local)</span>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="window.centerOnGPX('${id}')">${g.name}</span>
                     <input type="color" value="${g.color || '#3b82f6'}" style="width:16px;height:16px;border:none;border-radius:3px;cursor:pointer;padding:0" onchange="window.changeGPXColor('${id}', this.value)" />
-                    <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="unloadGPX('${id}')">❌</button>
+                    <button class="btn" style="padding:2px;font-size:9px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="window.unloadGPX('${id}')">🗑️</button>
                 </div>
             `;
-        }
-    });
+        });
+    }
 }
 
 window.centerOnGPX = function(id) {
@@ -1038,10 +1023,9 @@ window.centerOnGPX = function(id) {
     }
 }
 
-window.toggleLibraryGPX = async function(id, checked) {
-    const isLoaded = state.loadedGpx.has(id) || (parseInt(id) && state.loadedGpx.has(parseInt(id)));
-    if (isLoaded) {
-        const gpx = state.loadedGpx.get(id) || state.loadedGpx.get(parseInt(id));
+window.toggleLibraryGPX = function(id, checked) {
+    const gpx = state.loadedGpx.get(id) || state.loadedGpx.get(parseInt(id));
+    if (gpx) {
         gpx.visible = checked;
         if (gpx.layers) {
             gpx.layers.forEach(l => {
@@ -1055,10 +1039,6 @@ window.toggleLibraryGPX = async function(id, checked) {
         }
         rebuildGlobalRoute();
         fetchGPXLibrary();
-    } else {
-        if (checked) {
-            await loadGPXFromServer(id);
-        }
     }
 }
 
@@ -1075,102 +1055,23 @@ window.changeGPXColor = function(id, color) {
     }
 }
 
-window.confirmDeleteGPX = function(id, name) {
-    // Check if we are in an automated test environment
-    if (window.isAutomatedTest || confirm(`Supprimer définitivement la trace "${name}" ?`)) {
-        deleteGPXFromServer(id);
-    }
-}
-
-async function deleteGPXFromServer(id) {
-    try {
-        const res = await fetch('/api/gpx/' + id, { method: 'DELETE' });
-        if (res.ok) {
-            unloadGPX(parseInt(id));
-            fetchGPXLibrary();
-            showToast('Trace supprimée', 'success');
-        }
-    } catch(e) { showToast('Erreur suppression', 'error'); }
-}
-
-async function loadGPXFromServer(id) {
-    try {
-        const res = await fetch('/api/gpx/' + id);
-        if (res.ok) {
-            const data = await res.json();
-            loadGPX(data.data, data.name, id);
-        }
-    } catch(e) {}
-}
-
-async function uploadGPX(name, data) {
-    const isAutonomous = !!state.settings.telegramToken;
-    
-    // En mode autonome, on privilégie le chargement local immédiat
-    if (isAutonomous) {
-        console.log('[Autonomous] Chargement GPX local direct.');
-        const localId = 'local-' + Date.now();
-        loadGPX(data, name, localId);
-        showToast('Trace chargée localement (Mode Autonome)', 'success');
-        
-        // On essaie quand même de sauvegarder sur le serveur en tâche de fond si dispo
-        fetch('/api/gpx', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, data })
-        }).catch(() => { /* ignore silent failure */ });
-        
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/gpx', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, data })
-        });
-        if (res.ok) {
-            const resData = await res.json();
-            loadGPX(data, name, resData.id);
-            fetchGPXLibrary();
-            return;
-        }
-    } catch (err) {
-        console.warn('[App] Serveur non détecté ou erreur réseau, repli local.');
-    }
-
-    // FALLBACK LOCAL
-    const localId = 'local-' + Date.now();
-    loadGPX(data, name, localId);
-    showToast('Mode Local : Trace chargée en mémoire', 'info');
-}
-
 window.confirmDeletePilot = function(id, name) {
-    if (window.isAutomatedTest || confirm(`Supprimer le pilote "${name}" de cette session ?`)) {
-        console.log("ConfirmPilotDelete for:", id);
-        deleteParticipantFromServer(id.toString());
-    }
-}
-
-async function deleteParticipantFromServer(id) {
-    try {
-        console.log("Deleting participant from server or local:", id);
-        const res = await fetch('/api/participants/' + id, { method: 'DELETE' });
-        if (res.ok || res.status === 404) {
-            console.log(res.ok ? "Server deletion OK" : "Pilot not on server (404), removing locally");
-            removeParticipant(id);
+    if (confirm(`Supprimer le pilote "${name}" de cette session ?`)) {
+        const p = state.participants.get(id);
+        if (p) {
+            if (p.marker) state.map.removeLayer(p.marker);
+            if (p.poly) state.map.removeLayer(p.poly);
+            state.participants.delete(id);
+            renderParticipantList();
+            showToast(`Pilote ${name} supprimé`);
         }
-    } catch (err) {
-        console.error("Error deleting participant:", err);
-        // Fallback remove
-        removeParticipant(id);
     }
 }
-
 function removeParticipant(id) {
     const p = state.participants.get(id);
     if (p) {
-        state.map.removeLayer(p.marker);
+        if (p.marker) state.map.removeLayer(p.marker);
+        if (p.poly) state.map.removeLayer(p.poly);
         if (p.trail) state.map.removeLayer(p.trail);
         state.participants.delete(id);
         renderParticipantList();
@@ -1204,36 +1105,34 @@ function updatePilotTraces() {
 function clearDatabase() {
     if (!confirm('Voulez-vous vraiment vider la base de données (Traces et Pilotes) ?')) return;
 
-    const isAutonomous = !!state.settings.telegramToken;
-    if (isAutonomous) {
-        // Mode Autonome : Reset local memory state
-        state.participants.forEach(p => state.map.removeLayer(p.marker));
-        state.participants.clear();
-        state.loadedGpx.forEach(g => {
-            g.layers.forEach(l => state.map.removeLayer(l));
-            if (g.wpLayer) state.map.removeLayer(g.wpLayer);
-        });
-        state.loadedGpx.clear();
-        state.routePoints = [];
-        state.waypoints = [];
-        if (state.routeLayer) state.map.removeLayer(state.routeLayer);
-        renderParticipantList();
-        renderAlertList();
-        updateStats();
-        fetchGPXLibrary();
-        showToast('Données locales effacées', 'success');
-        closeSettingsModal();
-    } else {
-        // Mode Serveur : API call
-        fetch('/api/clear', { method: 'POST' })
-            .then(res => {
-                if (res.ok) {
-                    showToast('Base de données serveur vidée', 'success');
-                    location.reload();
-                } else {
-                    showToast('Erreur serveur lors de la suppression', 'error');
-                }
-            }).catch(() => showToast('Erreur réseau', 'error'));
-    }
+    // Reset local memory state
+    state.participants.forEach(p => {
+        if (p.marker) state.map.removeLayer(p.marker);
+        if (p.poly) state.map.removeLayer(p.poly);
+        if (p.trail) state.map.removeLayer(p.trail);
+    });
+    state.participants.clear();
+
+    state.loadedGpx.forEach(g => {
+        if (g.layers) g.layers.forEach(l => state.map.removeLayer(l));
+        if (g.wpLayer) state.map.removeLayer(g.wpLayer);
+    });
+    state.loadedGpx.clear();
+    
+    state.routePoints = [];
+    state.waypoints = [];
+    if (state.routeLayer) state.map.removeLayer(state.routeLayer);
+
+    // Full clear of localStorage
+    localStorage.clear();
+
+    renderParticipantList();
+    renderAlertList();
+    updateStats();
+    fetchGPXLibrary();
+    
+    showToast('Application réinitialisée', 'success');
+    closeSettingsModal();
+    setTimeout(() => location.reload(), 1000);
 }
 
