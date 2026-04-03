@@ -56,16 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initUI();
     applySettings();
 
-    // Try Auto connect to local WS
-    if (state.settings.wsUrl) {
-        connectWS(state.settings.wsUrl);
-    } else {
-        // default for standalone
-        connectWS('ws://127.0.0.1:3000');
-    }
-
-
-    // Start Telegram Client if token exists (Autonomous Mode)
+    // Start Telegram Client if token exists
     if (state.settings.telegramToken) {
         initTelegramClient(state.settings.telegramToken);
     }
@@ -554,49 +545,6 @@ function stopSimulation() {
     if (btn) btn.classList.remove('active');
 }
 
-/* ── WebSocket (Live mode) ──────────────────────────────────────────────────── */
-function connectWS(url) {
-    if (state.ws) { state.ws.close(); state.ws = null; }
-    console.log('[WS] Tentative de connexion à :', url);
-    try {
-        state.ws = new WebSocket(url);
-        state.ws.onmessage = (e) => {
-            console.log('[WS] Message reçu :', e.data);
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'position') {
-                    console.log('[WS] Position reçue pour :', msg.participant.name);
-                    updateParticipant(msg.participant);
-                }
-                if (msg.type === 'participants' || msg.type === 'init') {
-                    console.log('[WS] Init avec', msg.participants.length, 'participants');
-                    msg.participants.forEach(p => updateParticipant(p));
-                }
-                if (msg.type === 'participant_added') {
-                    console.log('[WS] Participante ajouté :', msg.participant.name);
-                    updateParticipant(msg.participant);
-                }
-            } catch (err) {
-                console.error('[WS] Erreur parsing message :', err);
-            }
-        };
-        state.ws.onopen = () => {
-            console.log('[WS] Connecté !');
-            showToast('Connecté au serveur', 'success');
-            state.wsUrl = url;
-        };
-        state.ws.onerror = (err) => { 
-            console.error('[WS] Erreur WebSocket :', err);
-        };
-        state.ws.onclose = () => {
-            console.warn('[WS] Connexion fermée. Reconnexion dans 5s...');
-            // Reconnect after 5s silently
-            setTimeout(() => { if (state.wsUrl) connectWS(state.wsUrl); }, 5000);
-        };
-    } catch (err) {
-        // Silencieusement ignorer les erreurs WebSocket en mode autonome (sans serveur PC)
-    }
-}
 
 /* ── Telegram Client (Autonomous) ─────────────────────────────────────────── */
 function initTelegramClient(token) {
@@ -731,15 +679,6 @@ function collectSettings() {
         });
     }
     
-    // Send settings to server
-    fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            immobile_threshold: state.settings.immobileThresh,
-            log_interval: state.settings.logInterval
-        })
-    }).catch(console.error);
 
     if (state.settings.browserNotif && Notification.permission === 'default') {
         Notification.requestPermission();

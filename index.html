@@ -62,6 +62,11 @@
         <div id="gpx-library-list"></div>
       </div>
 
+      <!-- Version Footer -->
+      <div style="margin-top:auto;padding:12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center;">
+        LiveTrack Rally — <span style="color:var(--green);font-weight:700;">v1.1.0 (Cloud ☁️)</span>
+      </div>
+
       <!-- Visibility toggles -->
       <div style="margin:6px 12px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;display:flex;flex-direction:column;gap:5px;">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
@@ -208,10 +213,10 @@
         </div>
 
         <div class="form-group" id="token-group">
-          <label>Token Telegram (Mode Autonome)</label>
+          <label>Token Telegram</label>
           <input type="password" id="s-token" placeholder="12345678:ABC-DEF..." style="width:100%;margin-top:5px" />
           <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
-            Requis pour le mode 100% autonome sur mobile.
+            Requis pour le suivi en direct. Obtenez-le auprès de @BotFather.
           </div>
         </div>
       </div>
@@ -283,11 +288,9 @@
             <img src="#" id="qr-code-img" alt="QR Code" style="width:200px;height:200px;display:none" />
             <div id="qr-placeholder"
               style="width:200px;height:200px;background:#eee;color:#333;display:flex;align-items:center;justify-content:center;font-size:12px;text-align:center;padding:20px">
-              Configurez votre bot Telegram dans le fichier telegram_token.txt et lancez le serveur pour afficher le QR
-              Code.</div>
+              Configurez votre bot Telegram dans les paramètres pour afficher le QR Code.</div>
           </div>
-          <p style="font-size:11px;color:var(--text-muted)">Le nom du bot Telegram est récupéré automatiquement si le
-            serveur local est actif.</p>
+          <p style="font-size:11px;color:var(--text-muted)">Le QR code permet à vos pilotes de rejoindre directement votre bot.</p>
         </div>
       </div>
 
