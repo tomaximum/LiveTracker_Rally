@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-1.3.5--cloud-blue)
+![Version](https://img.shields.io/badge/version-1.3.6--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -8,10 +8,11 @@
 
 ---
 
-## ✨ Points forts (Cloud Only)
-La version **v1.3.3** est 100% statique. Tout se passe directement dans votre navigateur :
+## ✨ Points forts (v1.3.6 Stable)
+La version **v1.3.6** est 100% statique. Tout se passe directement dans votre navigateur :
 - **Pas de serveur** : Aucune installation Python (PC/Mac) n'est requise.
 - **Autonomie** : Utilisation directe de l'API Telegram pour le suivi.
+- **Focus Intelligent** : Nouveau système de focus unifié évitant les conflits visuels entre les pilotes et les traces GPX.
 - **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
 
 ---
@@ -20,7 +21,7 @@ La version **v1.3.3** est 100% statique. Tout se passe directement dans votre na
 
 1. **Accédez à l'URL** de votre projet (ex: `https://votre-nom.github.io/LiveTracker_Rally/`).
 2. **Paramètres** : Cliquez sur ⚙️ et saisissez votre **Token Telegram** (obtenu via @BotFather).
-3. **GPX** : Importez votre trace de référence. La couleur et l'état de chaque trace sont sauvegardés.
+3. **GPX** : Importez votre trace de référence. La couleur et l'état de chaque trace sont sauvegardés localement.
 4. **Partage** : Demandez à vos pilotes de lancer le bot et de partager leur position en direct.
 
 ---
@@ -79,4 +80,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ---
-*Développé par Antigravity, Gemini et Tomaximum — Version 1.3.3 Cloud Only*
+*Développé par Antigravity, Gemini et Tomaximum — Version 1.3.6 (Stable)*
