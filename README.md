@@ -29,6 +29,11 @@ La version **v1.3.1** est 100% statique. Tout se passe directement dans votre na
 
 L'intégration de Telegram permet de suivre les pilotes en temps réel sans serveur intermédiaire.
 
+[![App Store](https://img.shields.io/badge/App_Store-iOS-black?logo=apple&style=for-the-badge)](https://apps.apple.com/app/telegram-messenger/id686449807) 
+[![Google Play](https://img.shields.io/badge/Google_Play-Android-black?logo=google-play&style=for-the-badge)](https://play.google.com/store/apps/details?id=org.telegram.messenger)
+
+---
+
 ### 1️⃣ Création du Bot (via @BotFather)
 1.  Ouvrez **Telegram** et cherchez le contact **@BotFather**.
 2.  Envoyez la commande `/newbot`.
