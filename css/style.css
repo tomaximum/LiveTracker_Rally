@@ -503,11 +503,39 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
   
   /* Topbar ajustement */
   #topbar {
-    padding: 0 10px;
+    padding: 0 8px;
     min-height: 56px;
     height: auto;
     flex-shrink: 0;
+    gap: 8px; /* Réduire l'espace entre les éléments */
   }
+  
+  #topbar .logo {
+    font-size: 14px; /* Réduire la taille du texte */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* On cache le mot Tracker si ça manque de place */
+    max-width: 140px; 
+  }
+  
+  #topbar .logo span {
+    display: none; /* Cacher le numéro de version sur mobile pour gagner de la place */
+  }
+
+  /* Compresser les boutons (garder uniquement l'icone) */
+  .hide-mobile {
+    display: none;
+  }
+  
+  #btn-settings {
+    padding: 6px 10px;
+  }
+  
+  #btn-wakelock {
+    padding: 6px;
+  }
+
   #mobile-menu-btn {
     display: inline-block !important; /* Force l'affichage */
     background: transparent;
