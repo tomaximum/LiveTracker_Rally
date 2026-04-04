@@ -35,26 +35,35 @@ class RallyMap {
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             { attribution: '© Esri World Imagery', maxZoom: 19 }
         );
-        const hybrid = L.layerGroup([
-            L.tileLayer(
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                { attribution: '© Esri', maxZoom: 19 }
-            ),
-            L.tileLayer(
-                'https://stamen-tiles.a.ssl.fastly.net/toner-hybrid/{z}/{x}/{y}.png',
-                { attribution: '© Stamen', maxZoom: 19, opacity: 0.6 }
-            )
-        ]);
+        const topo = L.tileLayer(
+            'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+            { attribution: '© OpenTopoMap', maxZoom: 17 }
+        );
 
         osm.addTo(this.map);
 
-        this._baseLayers = { 'OpenStreetMap': osm, 'Satellite': sat, 'Hybride': hybrid };
         this._overlays = {};
+        this._activeLayer = 'osm';
+        this._baseLayers = { 'osm': osm, 'satellite': sat, 'topo': topo };
 
-        this._layerControl = L.control.layers(this._baseLayers, this._overlays, {
+        this._layerControl = L.control.layers(null, this._overlays, {
             position: 'topright',
             collapsed: false
         }).addTo(this.map);
+
+        // Bind custom UI buttons
+        const layerBtns = document.querySelectorAll('#rr-map-controls .map-ctrl-btn');
+        layerBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const layerKey = btn.dataset.rrlayer;
+                if (layerKey === this._activeLayer) return;
+                this.map.removeLayer(this._baseLayers[this._activeLayer]);
+                this._baseLayers[layerKey].addTo(this.map);
+                this._activeLayer = layerKey;
+                layerBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
 
         // ── Ré-appliquer les styles après un toggle du contrôle de couches ──
         this.map.on('overlayadd', (e) => {
@@ -81,9 +90,15 @@ class RallyMap {
         }
         this.roadbookLayer = L.layerGroup();
 
+        let routeLatLngs = [];
         if (trackPoints && trackPoints.length > 1) {
-            const latlngs = trackPoints.map(p => [p.lat, p.lon]);
-            L.polyline(latlngs, {
+            routeLatLngs = trackPoints.map(p => [p.lat, p.lng !== undefined ? p.lng : p.lon]);
+        } else if (waypoints && waypoints.length > 1) {
+            routeLatLngs = waypoints.map(w => [w.lat, w.lng !== undefined ? w.lng : w.lon]);
+        }
+
+        if (routeLatLngs.length > 1) {
+            L.polyline(routeLatLngs, {
                 color: '#1565C0',
                 weight: 5,
                 opacity: 1,
@@ -91,7 +106,7 @@ class RallyMap {
                 lineCap: 'round'
             }).addTo(this.roadbookLayer);
 
-            L.polyline(latlngs, {
+            L.polyline(routeLatLngs, {
                 color: '#FFFFFF',
                 weight: 8,
                 opacity: 0.35,
@@ -102,7 +117,8 @@ class RallyMap {
 
         waypoints.forEach((w, idx) => {
             const fillColor = this._wptColor(w.type);
-            const marker = L.circleMarker([w.lat, w.lon], {
+            const markerLon = w.lng !== undefined ? w.lng : w.lon;
+            const marker = L.circleMarker([w.lat, markerLon], {
                 radius: 9,
                 fillColor,
                 color: '#fff',
@@ -116,12 +132,13 @@ class RallyMap {
             );
             marker.addTo(this.roadbookLayer);
 
-            L.marker([w.lat, w.lon], {
+            // Étiquette textuelle bien visible (fond sombre) pour contraster avec la carte claire
+            L.marker([w.lat, markerLon], {
                 icon: L.divIcon({
-                    className: '',
-                    html: `<span style="font:bold 9px/9px sans-serif;color:#fff">${w.name || idx + 1}</span>`,
-                    iconSize: [20, 10],
-                    iconAnchor: [10, 5]
+                    className: 'waypoint-label-rr',
+                    html: `<div style="background:var(--bg-card); color:var(--text-bright); padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; white-space:nowrap; border:1px solid var(--border); box-shadow:0 2px 4px rgba(0,0,0,0.5);">${w.name || idx + 1}</div>`,
+                    iconSize: null, // Allow auto width
+                    iconAnchor: [-10, 10] // Push slightly right and bottom
                 }),
                 zIndexOffset: 600
             }).addTo(this.roadbookLayer);
@@ -131,9 +148,9 @@ class RallyMap {
         this._overlays['📍 Roadbook'] = this.roadbookLayer;
         this._layerControl.addOverlay(this.roadbookLayer, '📍 Roadbook');
 
-        const pts = (trackPoints && trackPoints.length > 0) ? trackPoints : waypoints.map(w => ({ lat: w.lat, lon: w.lon }));
+        const pts = (trackPoints && trackPoints.length > 0) ? trackPoints : waypoints.map(w => ({ lat: w.lat, lng: w.lng !== undefined ? w.lng : w.lon }));
         if (pts.length > 0) {
-            this.map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lon])), { padding: [30, 30] });
+            this.map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lng !== undefined ? p.lng : p.lon])), { padding: [30, 30] });
         }
     }
 

@@ -57,8 +57,8 @@ window.Wizard = {
             } else {
                 mapContainer.style.display = 'flex';
                 dashContainer.style.display = 'none';
-                if(window.mapCore) {
-                    setTimeout(() => window.mapCore.invalidateSize(), 50);
+                if(typeof state !== 'undefined' && state.map) {
+                    setTimeout(() => state.map.invalidateSize(), 50);
                 }
             }
         }

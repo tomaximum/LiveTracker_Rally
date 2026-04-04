@@ -1,5 +1,9 @@
 // Mathématiques et Géospatial
 
+window.haversineDistance = function(p1, p2) {
+    if (!p1 || !p2) return 0;
+    return GeoTools.distance(p1.lat, p1.lng || p1.lon, p2.lat, p2.lng || p2.lon) / 1000;
+};
 class GeoTools {
     /**
      * Calcule la distance en mètres entre deux coordonnées géographiques

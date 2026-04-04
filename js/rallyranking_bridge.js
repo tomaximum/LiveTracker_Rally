@@ -94,18 +94,21 @@ function initRRBridge() {
     const configBtn = document.getElementById('btn-rr-config');
     const configModal = document.getElementById('rr-config-modal');
     const configClose = document.getElementById('close-rr-config');
+    const configCloseBtn = document.getElementById('btn-close-rr-config');
     const configSave = document.getElementById('btn-save-rr-config');
 
-    if(configBtn) configBtn.onclick = () => configModal.style.display = 'flex';
-    if(configClose) configClose.onclick = () => configModal.style.display = 'none';
+    if(configBtn) configBtn.onclick = () => configModal.classList.add('open');
+    if(configClose) configClose.onclick = () => configModal.classList.remove('open');
+    if(configCloseBtn) configCloseBtn.onclick = () => configModal.classList.remove('open');
 
     if(configSave) {
         configSave.onclick = () => {
             const getVal = (id, def) => parseInt(document.getElementById(id).value) || def;
             window.rrState.settings = {
                 eventName: document.getElementById('rr-cfg-name').value || 'Rallye LiveTrack',
-                speedLimit: getVal('rr-cfg-speed', 130),
+                speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
+                speedMultiplier: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
                 wptTolerance: 100,
                 wptPenalties: {
                     default: getVal('rr-cfg-wp-def', 900),
@@ -115,14 +118,14 @@ function initRRBridge() {
                     wps: getVal('rr-cfg-wp-wps', 1200),
                     wpn: getVal('rr-cfg-wp-wpn', 3600),
                     wpc: getVal('rr-cfg-wp-wpc', 900),
-                    dss: getVal('rr-cfg-wp-wpn', 3600),
-                    ass: getVal('rr-cfg-wp-wpn', 3600),
+                    dss: getVal('rr-cfg-wp-ass', 3600),
+                    ass: getVal('rr-cfg-wp-ass', 3600),
                     dz: getVal('rr-cfg-wp-dz', 900),
                     fz: getVal('rr-cfg-wp-dz', 900),
-                    cp: 3600
+                    cp: getVal('rr-cfg-wp-cp', 3600)
                 }
             };
-            configModal.style.display = 'none';
+            configModal.classList.remove('open');
             if(window.rrState.results.length > 0) calculateRRScoring();
             if(typeof showToast === 'function') showToast('Configuration sauvegardée.', 'success');
         };
@@ -143,14 +146,14 @@ function handleRRRoadbook(file) {
             document.getElementById('status-roadbook').style.color = '#34d399';
             
             if(window.rrState.map) {
-                window.rrState.map.renderRoadbook(parsed.waypoints, parsed.trackPoints || parsed.routePoints);
+                window.rrState.map.renderRoadbook(parsed.waypoints, parsed.route || []);
             }
 
             if(typeof sendToDev === 'function') sendToDev('gpx', { xml: xml, name: "ROADBOOK_REF_" + file.name });
             if(typeof showToast === 'function') showToast('Roadbook chargé !', 'success');
         } catch(err) {
-            console.error(err);
-            alert("Erreur lors de l'analyse du Roadbook.");
+            console.error('Erreur GPX:', err);
+            alert("Erreur lors de l'analyse du Roadbook: " + err.message + "\nLigne (approx): " + (err.lineNumber || 'inconnue'));
         }
     };
     reader.readAsText(file);
@@ -170,7 +173,9 @@ function handleRRPilot(file) {
             if(existing >= 0) window.rrState.pilots[existing] = { raw: file, gpx: parsed };
             else window.rrState.pilots.push({ raw: file, gpx: parsed });
             
-            document.getElementById('status-pilots').textContent = `${window.rrState.pilots.length} trace(s) analysée(s)`;
+            const statusEl = document.getElementById('status-pilots');
+            const pilotNames = window.rrState.pilots.map(p => p.gpx.name).join(', ');
+            statusEl.innerHTML = `<span style="color:var(--green)">✅ ${window.rrState.pilots.length} trace(s) analysée(s)</span><br><span style="color:var(--text-muted); font-size:11px; display:inline-block; margin-top:4px;">${pilotNames}</span>`;
             
             if(typeof sendToDev === 'function') sendToDev('gpx', { xml: xml, name: "PILOTE_" + file.name });
             if(typeof showToast === 'function') showToast(`Pilote ${file.name.replace('.gpx','')} ajouté.`, 'info');
@@ -186,7 +191,7 @@ function calculateRRScoring() {
     if(window.rrState.pilots.length === 0) return alert("Chargez au moins un GPX pilote.");
 
     // Roadbook max time calculation for regularity
-    let rTracks = window.rrState.roadbook.trackPoints || window.rrState.roadbook.routePoints || [];
+    let rTracks = window.rrState.roadbook.route || window.rrState.roadbook.trackPoints || [];
     let maxT = 0;
     if(rTracks.length > 0) {
         maxT = (rTracks[rTracks.length-1].time - rTracks[0].time) / 1000; 
@@ -215,7 +220,7 @@ function calculateRRScoring() {
 
     window.rrState.pilots.forEach(p => {
         // Evaluate
-        const ptTracks = p.gpx.trackPoints && p.gpx.trackPoints.length > 0 ? p.gpx.trackPoints : p.gpx.routePoints;
+        const ptTracks = p.gpx.route || p.gpx.trackPoints || p.gpx.routePoints || [];
         const res = window.rrState.engine.calculateCompetitor({ tracks: ptTracks });
         res.name = p.gpx.name;
         // Inject tracks into result for PDF export & mapping

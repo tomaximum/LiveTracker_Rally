@@ -49,14 +49,16 @@ class TelegramClient {
         try {
             const params = new URLSearchParams({
                 offset: this.offset,
-                timeout: 30,
-                allowed_updates: JSON.stringify(["message", "edited_message"])
+                timeout: 30
             });
 
             const response = await fetch(`${this.api}/getUpdates?${params.toString()}`);
             const data = await response.json();
 
             if (data.ok && data.result) {
+                if (data.result.length > 0) {
+                     console.log(`[Telegram] Polling OK, ${data.result.length} messages reçus. offset=${this.offset}`);
+                }
                 for (const update of data.result) {
                     this.offset = update.update_id + 1;
                     const msg = update.message || update.edited_message;
@@ -85,6 +87,10 @@ class TelegramClient {
                         };
 
                         console.log(`[Telegram] Position reçue: ${name}`, participant.lat, participant.lng);
+                        if(typeof window.showToast === 'function' && !this.knownUsers.has(uid+"_notified")) {
+                            window.showToast(`Nouvelle position reçue depuis Telegram : ${name}`, 'success');
+                            this.knownUsers.set(uid+"_notified", true);
+                        }
                         this.onPositionUpdate(participant);
                     }
                 }

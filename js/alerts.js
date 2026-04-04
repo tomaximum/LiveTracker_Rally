@@ -161,3 +161,27 @@ class AlertEngine {
         this.activeAlerts.clear();
     }
 }
+
+function minDistanceToRoute(p, routePoints) {
+    if (!routePoints || routePoints.length === 0) return Infinity;
+    if (routePoints.length === 1) {
+        if (typeof haversineDistance === 'function') return haversineDistance(p, routePoints[0]);
+        if (typeof GeoTools !== 'undefined') return GeoTools.distance(p.lat, p.lng, routePoints[0].lat, routePoints[0].lng);
+        return 0; // Fallback
+    }
+
+    let minDist = Infinity;
+    for (let i = 0; i < routePoints.length - 1; i++) {
+        let d = Infinity;
+        if (typeof GeoTools !== 'undefined' && typeof GeoTools.pointToSegmentDistance === 'function') {
+            d = GeoTools.pointToSegmentDistance(p, routePoints[i], routePoints[i+1]);
+        } else if (typeof haversineDistance === 'function') {
+            d = Math.min(
+                haversineDistance(p, routePoints[i]),
+                haversineDistance(p, routePoints[i+1])
+            );
+        }
+        if (d < minDist) minDist = d;
+    }
+    return minDist;
+}

@@ -143,9 +143,8 @@
 
       <!-- Tab: Results (RallyRanking Port) -->
       <div id="tab-results" class="tab-content">
-        <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="sidebar-header">
             <span>🏆 RÉSULTATS (Scoring)</span>
-            <button id="btn-rr-config" class="btn" style="padding: 4px 8px; font-size: 11px;">⚙️ Config</button>
         </div>
         
         <div style="padding:15px; border-bottom:1px solid var(--border);">
@@ -169,7 +168,8 @@
         </div>
 
         <div style="padding:15px;">
-          <button class="btn btn-accent" id="btn-calc-score" style="width:100%; padding:12px; font-size:14px; margin-bottom:10px;">📊 Calculer le Classement</button>
+          <button class="btn" id="btn-rr-config" style="width:100%; justify-content:center; padding:10px; font-size:13px; margin-bottom:10px; background:rgba(255,255,255,0.05);">⚙️ Configuration (Régularité & Pénalités)</button>
+          <button class="btn btn-accent" id="btn-calc-score" style="width:100%; justify-content:center; padding:12px; font-size:14px; margin-bottom:10px;">📊 Calculer le Classement</button>
           
           <div style="display:flex; gap:10px; margin-top:15px;">
             <button class="btn" id="btn-export-pdf" style="flex:1; font-size:11px;">📄 Classement PDF</button>
@@ -249,7 +249,17 @@
 
         <h2 style="margin-top:0; color:var(--text-bright);">Carte du Parcours (RallyRanking)</h2>
         <!-- Deuxième carte (Dashboard) -->
-        <div id="main-map" style="height: 400px; width: 100%; border-radius: 8px; border: 1px solid var(--border); background:#111822; z-index: 1;"></div>
+        <div style="position:relative; width:100%; height:400px; border-radius:8px; border:1px solid var(--border); overflow:hidden;">
+          <div id="main-map" style="width:100%; height:100%; background:#111822; z-index:1;"></div>
+          <!-- RR Map layer controls -->
+          <div id="rr-map-controls" style="position:absolute; top:10px; right:10px; z-index:1000;">
+            <div class="map-ctrl-group">
+              <button class="map-ctrl-btn active" data-rrlayer="osm">🗺️ Carte</button>
+              <button class="map-ctrl-btn" data-rrlayer="satellite">🛰️ Satellite</button>
+              <button class="map-ctrl-btn" data-rrlayer="topo">⛰️ Topo</button>
+            </div>
+          </div>
+        </div>
 
       </div> <!-- End dashboard-container -->
       
@@ -465,42 +475,67 @@
   </div>
   
   <!-- ── RallyRanking Configuration Modal ──────────────────────────── -->
-  <div id="rr-config-modal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
-        <span class="close-modal" id="close-rr-config">&times;</span>
-        <h2>Configuration du Scoring</h2>
-        <form id="rr-config-form" style="margin-top:20px;">
+  <div id="rr-config-modal" class="modal-overlay-generic">
+    <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-title">
+            ⚙️ Configuration du Scoring
+            <button id="close-rr-config" style="margin-left:auto; background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <form id="rr-config-form">
             <div class="form-group" style="margin-bottom:15px;">
-                <label style="display:block;margin-bottom:5px;font-size:12px;">🏁 Nom de l'événement (Export)</label>
-                <input type="text" id="rr-cfg-name" placeholder="Rallye LiveTrack" value="Rallye LiveTrack">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">🏁 Nom de l'événement</label>
+                <input type="text" id="rr-cfg-name" value="Formation Roadbook AxeQuad" style="padding:8px; border-radius:4px; border:1px solid #ff4d4f; outline:none;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">📅 Date</label>
+                <input type="date" id="rr-cfg-date" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">🏆 Mode de Classement</label>
+                <select id="rr-cfg-mode" style="padding:8px; border-radius:4px; width:100%; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border);">
+                    <option value="regularity">Régularité (Pénalités)</option>
+                    <option value="time">Temps Scratch (Rallye)</option>
+                </select>
             </div>
             
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <div class="form-group" style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;">⏱️ Temps Référence (HH:MM:SS)</label>
-                    <input type="text" id="rr-cfg-maxtime" placeholder="00:00:00" value="00:00:00">
-                </div>
-                <div class="form-group" style="flex:1;">
-                    <label style="display:block;margin-bottom:5px;font-size:12px;">Vitesse Limitée (km/h)</label>
-                    <input type="number" id="rr-cfg-speed" value="130">
-                </div>
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">⏱️ Temps de Référence (HH:MM:SS)</label>
+                <input type="text" id="rr-cfg-maxtime" placeholder="01:30:00" value="01:30:00" style="padding:8px; border-radius:4px;">
             </div>
 
             <fieldset style="border:1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:15px;">
-                <legend style="color:var(--text-bright); font-size:12px; padding:0 5px;">Pénalités Waypoints (secondes)</legend>
+                <legend style="color:var(--text-muted); font-size:12px; padding:0 5px; text-transform:uppercase;">Pénalités Waypoints (secondes)</legend>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
-                    <div><label>Défaut</label> <input type="number" id="rr-cfg-wp-def" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPM</label> <input type="number" id="rr-cfg-wp-wpm" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPE</label> <input type="number" id="rr-cfg-wp-wpe" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPV</label> <input type="number" id="rr-cfg-wp-wpv" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPS</label> <input type="number" id="rr-cfg-wp-wps" value="1200" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPN / DSS / ASS</label> <input type="number" id="rr-cfg-wp-wpn" value="3600" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>WPC</label> <input type="number" id="rr-cfg-wp-wpc" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
-                    <div><label>DZ / FZ</label> <input type="number" id="rr-cfg-wp-dz" value="900" style="padding:4px;width:100%;background:var(--bg);color:white;border:1px solid var(--border);"></div>
+                    <div><label style="display:block;margin-bottom:2px">Défaut</label> <input type="number" id="rr-cfg-wp-def" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPM</label> <input type="number" id="rr-cfg-wp-wpm" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPE</label> <input type="number" id="rr-cfg-wp-wpe" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPV</label> <input type="number" id="rr-cfg-wp-wpv" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPS</label> <input type="number" id="rr-cfg-wp-wps" value="1200" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPN</label> <input type="number" id="rr-cfg-wp-wpn" value="3600" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPC</label> <input type="number" id="rr-cfg-wp-wpc" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">DSS/ASS</label> <input type="number" id="rr-cfg-wp-ass" value="3600" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">DZ/FZ</label> <input type="number" id="rr-cfg-wp-dz" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">CHECKPOINT</label> <input type="number" id="rr-cfg-wp-cp" value="3600" style="padding:8px;border-radius:4px;"></div>
                 </div>
             </fieldset>
 
-            <button type="button" class="btn btn-accent" id="btn-save-rr-config" style="width:100%; padding:10px;">💾 Appliquer les paramètres</button>
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">Vitesse Globale Limitée (km/h)</label>
+                <input type="number" id="rr-cfg-speed" value="0" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="display:block;margin-bottom:2px;font-size:12px;">Coef Pénalité Survitesse</label>
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:5px;">pén = km/h_en_trop × durée(s) × coef<br>ex : coef=1 → 4km/h pendant 30s = 120s</div>
+                <input type="number" id="rr-cfg-coef" value="1" step="0.1" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn" id="btn-close-rr-config" style="background:#2a3441; border:none; padding:8px 20px;">Fermer</button>
+                <button type="button" class="btn" id="btn-save-rr-config" style="background:#ff4d4f; border:none; color:white; padding:8px 20px;">Sauvegarder</button>
+            </div>
         </form>
     </div>
   </div>
