@@ -9,13 +9,13 @@ window.parseGPX = function(xmlText) {
     const points = [];
 
     // Track points (most common)
-    const trkpts = doc.querySelectorAll('trkpt, gpx\\:trkpt');
+    const trkpts = doc.querySelectorAll('trkpt');
     if (trkpts.length > 0) {
         trkpts.forEach((pt, index) => {
             const lat = parseFloat(pt.getAttribute('lat'));
             const lng = parseFloat(pt.getAttribute('lon'));
             if (!isNaN(lat) && !isNaN(lng)) {
-                const time = pt.querySelector('time, gpx\\:time');
+                const time = pt.querySelector('time');
                 let t = null;
                 if (time && time.textContent) {
                     t = new Date(time.textContent).getTime();
@@ -29,7 +29,7 @@ window.parseGPX = function(xmlText) {
     }
 
     // Route points (often used by TerraPirata for the curvy roadbook trace!)
-    const rtepts = doc.querySelectorAll('rtept, gpx\\:rtept');
+    const rtepts = doc.querySelectorAll('rtept');
     if (rtepts.length > 0) {
         rtepts.forEach((pt, index) => {
             const lat = parseFloat(pt.getAttribute('lat'));

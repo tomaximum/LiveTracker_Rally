@@ -1,15 +1,15 @@
-const CACHE_NAME = 'livetiming-v2.0.8-test-fix';
+const CACHE_NAME = 'livetiming-v2.0.9-test-fix';
 const ASSETS = [
   './',
-  'index.html?v=2.0.8',
-  'css/style.css?v=2.0.8',
-  'js/app.js?v=2.0.8',
-  'js/geo.js?v=2.0.8',
-  'js/gpx.js?v=2.0.8',
-  'js/alerts.js?v=2.0.8',
-  'js/wizard.js?v=2.0.8',
-  'js/scoring.js?v=2.0.8',
-  'js/parser.js?v=2.0.8',
+  'index.html?v=2.0.9',
+  'css/style.css?v=2.0.9',
+  'js/app.js?v=2.0.9',
+  'js/geo.js?v=2.0.9',
+  'js/gpx.js?v=2.0.9',
+  'js/alerts.js?v=2.0.9',
+  'js/wizard.js?v=2.0.9',
+  'js/scoring.js?v=2.0.9',
+  'js/parser.js?v=2.0.9',
   'icons/icon-512.png'
 ];
 
