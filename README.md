@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-1.3.6--stable-blue)
+![Version](https://img.shields.io/badge/version-2.5.0--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -8,9 +8,12 @@
 
 ---
 
-## ✨ Points forts (v1.3.6 Stable)
-La version **v1.3.6** est 100% statique. Tout se passe directement dans votre navigateur :
-- **Pas de serveur** : Aucune installation Python (PC/Mac) n'est requise.
+## ✨ Points forts (v2.5.0)
+La version **v2.5.0** apporte une robustesse inégalée au suivi sans serveur :
+- **Persistance Live** : Vos traces pilotes sont sauvegardées localement dans le navigateur (IndexedDB). Un rafraîchissement ou une coupure réseau ne fait plus perdre l'historique !
+- **Extraction GPX** : Exportez d'un clic les parcours réels effectués par vos pilotes suivis en direct pour les archiver ou alimenter le classement.
+- **RallyRanking V2** : Système de classement avec panneau de configuration unifié.
+- **Fiches Pilotes interactives** : Zoom automatique sur les infractions au clic.
 - **Autonomie** : Utilisation directe de l'API Telegram pour le suivi.
 - **Focus Intelligent** : Nouveau système de focus unifié évitant les conflits visuels entre les pilotes et les traces GPX.
 - **Contrôle Écran (Wake Lock)** : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
@@ -80,4 +83,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ---
-*Développé par Antigravity, Gemini et Tomaximum — Version 1.3.6 (Stable)*
+*Développé par Antigravity et Tomaximum — Version 2.5.0*

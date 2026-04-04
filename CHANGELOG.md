@@ -1,5 +1,21 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.0.2] - 2026-04-04
+- **Optimisation Test Bot** : Remplacement de l'envoi de message par une vérification `@getMe` (plus de `chat_id` requis pour tester le Token).
+- **Liberté Bot** : Suppression des IDs de chat de développement codés en dur pour permettre l'utilisation de n'importe quel Bot.
+- **Version** : Passage en v2.0.2.
+
+## [2.0.1] - 2026-04-04
+- **Correctif Alertes** : Les pilotes "Hors Ligne" sont désormais visibles dans le journal des alertes.
+- **Polissage UI** : Amélioration des "Empty States" et alignement des badges de statut.
+
+## [2.0.0] - 2026-04-04
+Version majeure "Cloud Native" finalisée.
+- **UI/UX** : Thème Premium Dark V2 complet.
+- **Waypoints** : Nouveau système d'étiquettes transparentes et gestion de visibilité.
+- **Architecture** : 100% statique, sans serveur, optimisé pour GitHub Pages.
+- **Stabilité** : Restauration robuste via IndexedDB.
+
 ## [1.3.6] - 2026-04-03
 Version stable de référence après correctifs critiques.
 - **UI & Traces** : Correction du bug d'invisibilité de la liste des roadbooks (fix flex-shrink).

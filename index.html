@@ -4,24 +4,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LiveTrack Rally v1.3.6 — Suivi en temps réel</title>
+  <title>LiveTrack Rally v2.5.0 — Live Tracking & Scoring</title>
   <meta name="description"
-    content="La version v1.3.6 est 100% statique. Tout se passe directement dans votre navigateur :
+    content="La version v2.5.0 est 100% statique. Tout se passe directement dans votre navigateur :
 - Pas de serveur : Aucune installation Python (PC/Mac) n'est requise.
-- Autonomie : Utilisation directe de l'API Telegram pour le suivi.
-- Persistance : Conserve vos roadbooks et l'historique complet des pilotes (positions).
-- Contrôle Écran (Wake Lock) : Bouton 📱🔒 pour empêcher la mise en veille du téléphone.
-- Télémetrie & Trace Hub : Centralisation automatique des traces et statistiques d'usage pour le développeur." />
+- Autonomie : Assistant de configuration Telegram V2 intégré." />
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- App CSS -->
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=2.0.4" />
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="theme-color" content="#3b82f6" />
-  <link rel="apple-touch-icon" href="icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
   <!-- iOS specific -->
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="LiveTrack" />
@@ -35,7 +34,7 @@
       <button id="mobile-menu-btn" class="btn" style="display:none;padding:5px 10px;font-size:18px">☰</button>
       <div class="logo">
         <div class="dot">📡</div>
-        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v1.3.6</span>
+        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v2.5.0</span>
       </div>
 
       <div class="topbar-spacer"></div>
@@ -52,10 +51,18 @@
 
     <!-- ── Sidebar ──────────────────────────────────────────────── -->
     <aside id="sidebar">
+      
+      <!-- Nav Tabs (V2) -->
+      <nav class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="tab-live">🛰️ Suivi Live</button>
+        <button class="tab-btn" data-tab="tab-results">🏆 Résultats</button>
+      </nav>
 
-      <!-- GPX Drop Zone & Library -->
-      <div class="sidebar-header" style="display:flex;align-items:center;">📍 Traces GPX</div>
-      <div id="gpx-drop">
+      <!-- Tab: Live Tracking -->
+      <div id="tab-live" class="tab-content active">
+        <!-- GPX Drop Zone & Library -->
+        <div class="sidebar-header">📍 Traces GPX</div>
+        <div id="gpx-drop">
         <div class="drop-icon">🗂️</div>
         <div class="drop-text">Glissez un fichier GPX ici</div>
         <div class="drop-hint">ou cliquez pour parcourir</div>
@@ -63,26 +70,26 @@
       <input type="file" id="gpx-file-input" accept=".gpx" style="display:none" />
 
       <!-- GPX Library List (checkboxes per trace) -->
-      <div id="gpx-library-container" style="max-height:150px;overflow-y:auto;margin:4px 12px;flex-shrink:0;">
+      <div id="gpx-library-container">
         <div id="gpx-library-list"></div>
       </div>
 
 
       <!-- Visibility toggles -->
-      <div style="margin:6px 12px;padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;display:flex;flex-direction:column;gap:5px;">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <div class="visibility-controls">
+        <label>
           <input type="checkbox" id="toggle-traces" checked> Traces GPX importées
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <label>
           <input type="checkbox" id="toggle-waypoints" checked> Zones OpenRally (Waypoints)
         </label>
-        <label id="radii-toggle-row" style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:14px;opacity:0.8;font-size:10px;">
+        <label id="radii-toggle-row" class="visibility-sub">
           <input type="checkbox" id="toggle-radii" checked> Afficher les rayons
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-left:14px;opacity:0.8;font-size:10px;">
+        <label class="visibility-sub">
           <input type="checkbox" id="toggle-wp-labels" checked> Afficher les noms (Étiquettes)
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <label>
           <input type="checkbox" id="toggle-pilot-traces" checked> Afficher trajectoires pilotes
         </label>
       </div>
@@ -102,18 +109,26 @@
 
       <!-- Participants -->
       <div id="participants-section">
-        <div class="sidebar-header" style="display:flex;align-items:center;">
+        <div class="sidebar-header">
           🏍️ Participants
-          <span style="font-weight:700;color:var(--accent);margin-left:auto;font-size:13px;letter-spacing:0"
-            id="stat-pilots">0</span>
-          <button class="btn" id="btn-add-pilot" style="margin-left:8px;padding:2px 6px;font-size:10px"
-            title="Gérer Pilotes">➕</button>
+          <span class="stat-count" id="stat-pilots">0</span>
+          <button class="btn btn-icon-add" id="btn-add-pilot" title="Gérer Pilotes">➕</button>
         </div>
         <div id="participants-list">
           <div class="empty-state">
             <div class="empty-icon">📡</div>
             <div>Aucun pilote.<br>Cliquez sur le ➕ pour en ajouter.</div>
           </div>
+        </div>
+        
+        <!-- v2.5.0 Live Traces controls -->
+        <div style="padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn" id="btn-export-live-gpx" style="width:100%; font-size:11px; background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); color:var(--accent);">
+            💾 Extraire Traces (GPX)
+          </button>
+          <button class="btn" id="btn-clear-live-traces" style="width:100%; font-size:11px; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444;">
+            🧹 Vider Traces Live
+          </button>
         </div>
       </div>
 
@@ -122,7 +137,7 @@
         <div class="alerts-head">
           🚨 Alertes
           <span id="alert-badge">0</span>
-          <span style="margin-left:auto;color:var(--text-muted);font-size:11px" id="stat-alerts">0 active(s)</span>
+          <span class="stat-count-alerts" id="stat-alerts">0 active(s)</span>
         </div>
         <div id="alerts-list">
           <div class="empty-state" style="padding:10px 0">
@@ -132,17 +147,58 @@
       </div>
       <!-- Version Footer -->
       <div style="margin-top:auto;padding:12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center;">
-        <em>Développé par Antigravity, Gemini et Tomaximum — Version 1.3.6 (Cloud ☁️)</em><br>
+        <em>Développé par Antigravity et Tomaximum — Version 2.5.0 (Cloud ☁️)</em><br>
         <small>Licence MIT — <a href="LICENSE" style="color:var(--text-secondary)">Voir la licence</a></small>
       </div>
+      </div> <!-- End tab-live -->
+
+      <!-- Tab: Results (RallyRanking Port) -->
+      <div id="tab-results" class="tab-content">
+        <div class="sidebar-header">
+            <span>🏆 RÉSULTATS (Scoring)</span>
+        </div>
+        
+        <div style="padding:15px; border-bottom:1px solid var(--border);">
+          <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:10px;">1. ROADBOOK (RÉFÉRENCE)</div>
+          <div id="dropzone-roadbook" class="file-dropzone" style="border: 2px dashed var(--border-bright); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 5px;">📍</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Glissez le GPX ou cliquez</div>
+            <input type="file" id="input-roadbook" accept=".gpx" style="display:none;">
+          </div>
+          <div id="status-roadbook" style="margin-top:8px; font-size:12px; color:var(--accent);">Aucune référence chargée</div>
+        </div>
+
+        <div style="padding:15px; border-bottom:1px solid var(--border);">
+          <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:10px;">2. TRACES PILOTES</div>
+          <div id="dropzone-pilots" class="file-dropzone" style="border: 2px dashed var(--border-bright); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: 0.2s;">
+            <div style="font-size: 24px; margin-bottom: 5px;">🏁</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Glissez les GPX (multiples)</div>
+            <input type="file" id="input-pilots" accept=".gpx" multiple style="display:none;">
+          </div>
+          <div id="status-pilots" style="margin-top:8px; font-size:12px; color:var(--text-muted);">0 trace(s) analysée(s)</div>
+        </div>
+
+        <div style="padding:15px;">
+          <button class="btn btn-accent" id="btn-calc-score" style="width:100%; justify-content:center; padding:12px; font-size:14px; margin-bottom:10px;">⚙️ Configurer & Calculer</button>
+          
+          <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn" id="btn-export-pdf" style="flex:1; font-size:11px;">📄 Classement PDF</button>
+            <button class="btn" id="btn-export-fiches" style="flex:1; font-size:11px;">📇 Fiches Pilotes</button>
+          </div>
+          <button class="btn" id="btn-export-csv" style="width:100%; margin-top:10px; font-size:11px;">💾 Export Excel (CSV)</button>
+          <button class="btn btn-danger" id="btn-reset-rr" style="width:100%; margin-top:10px; font-size:11px;">🗑 Réinitialiser Compétition</button>
+        </div>
+
+      </div> <!-- End tab-results -->
 
     </aside>
 
-    <!-- ── Map ──────────────────────────────────────────────────── -->
-    <main id="map">
-      <div id="map-container">
+    <!-- ── Main View ──────────────────────────────────────────────────── -->
+    <main id="main-view" style="display: block; overflow-y: auto; overflow-x: hidden; height: 100%; position: relative; background: var(--bg-lighter);">
+      
+      <!-- Container Carte Leaflet -->
+      <div id="map-container" style="display:flex; flex-direction:column; width:100%; height:100%;">
         <div id="leaflet-map"></div>
-
 
         <!-- Map layer controls -->
         <div id="map-controls">
@@ -170,8 +226,59 @@
             <div class="stat-label">Heure</div>
           </div>
         </div>
+      </div> <!-- End map-container -->
 
-      </div>
+      <!-- Container Resultats Plein Ecran -->
+      <div id="dashboard-container" style="display:none; flex-direction:column; width:100%; height: auto; min-height: 100%; background:var(--bg-lighter); padding:30px;">
+        
+        <h2 style="margin-top:0; color:var(--text-bright);">
+          Tableau des Scores
+          <span id="current-mode-label" style="font-size:14px; font-weight:normal; color:var(--text-muted); margin-left:10px;"></span>
+        </h2>
+
+
+        <!-- Le grand tableau généré ira ici -->
+        <div id="ranking-table-wrapper" style="background:#111822; border-radius:8px; border:1px solid var(--border); overflow-x:auto; margin-bottom: 30px;">
+          <table class="data-table" id="ranking-table" style="width:100%; border-collapse:collapse; color:white; font-size:13px; text-align:left;">
+            <thead>
+              <tr style="background:#1a2234; border-bottom:1px solid var(--border);">
+                <th style="padding:12px;">Rang</th>
+                <th style="padding:12px;">Concurrent</th>
+                <th style="padding:12px;">Temps Brut</th>
+                <th style="padding:12px;">Neutral.</th>
+                <th style="padding:12px;">Pénalités</th>
+                <th style="padding:12px; color:var(--accent);">Score Final</th>
+                <th style="padding:12px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ranking-tbody">
+              <tr><td colspan="7" style="padding:20px; text-align:center; color:var(--text-muted);">Importez les traces pour calculer le classement</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="penalty-details-container" style="display:none; margin-bottom: 30px; background:#111822; padding:15px; border-radius:8px; border:1px solid var(--border);">
+            <h3 style="margin-top:0; color:var(--text-bright); font-size:16px;">Détails des Pénalités <span style="font-size:12px; font-weight:normal; color:var(--text-muted);">(Concurrents sélectionnés)</span></h3>
+            <div id="penalty-details-content" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+
+        <h2 style="margin-top:0; color:var(--text-bright);">Carte du Parcours (RallyRanking)</h2>
+        <!-- Deuxième carte (Dashboard) -->
+        <div style="position:relative; width:100%; height:400px; border-radius:8px; border:1px solid var(--border); overflow:hidden;">
+          <div id="main-map" style="width:100%; height:100%; background:#111822; z-index:1;"></div>
+          <!-- RR Map layer controls -->
+          <div id="rr-map-controls" style="position:absolute; top:10px; right:10px; z-index:1000;">
+            <div class="map-ctrl-group">
+              <button class="map-ctrl-btn active" data-rrlayer="osm">🗺️ Carte</button>
+              <button class="map-ctrl-btn" data-rrlayer="satellite">🛰️ Satellite</button>
+              <button class="map-ctrl-btn" data-rrlayer="topo">⛰️ Topo</button>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- End dashboard-container -->
+      
+      <canvas id="hidden-map-canvas" style="display:none;"></canvas>
     </main>
 
   </div><!-- /#app -->
@@ -241,15 +348,19 @@
         </div>
 
         <div class="form-group" id="token-group">
-          <label>Token Telegram</label>
-          <div style="display:flex; gap:8px; margin-top:5px;">
+          <label>Token Telegram (API Bot)</label>
+          <div style="display:flex; gap:8px;">
             <input type="password" id="s-token" placeholder="12345678:ABC-DEF..." style="flex:1;" />
             <button id="btn-clear-token" class="btn" title="Supprimer ce Token"
-                    style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:5px 10px; font-size:14px; font-weight:700;">✖️</button>
+                    style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:5px 10px;">✖️</button>
           </div>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
-            Requis pour le suivi en direct. Obtenez-le auprès de @BotFather.
-          </div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+          <button class="btn btn-accent" id="btn-settings-test" style="width:100%; justify-content:center; font-size:12px;">
+            🚀 Tester la connexion du Bot
+          </button>
+          <div id="settings-test-status" style="font-size:11px; margin-top:6px; text-align:center; display:none;"></div>
         </div>
       </div>
 
@@ -269,7 +380,7 @@
       <!-- Advanced / Maintenance -->
       <div class="modal-section">
         <div class="modal-section-title">🛠️ Avancé</div>
-        <div class="toggle-row">
+        <div class="toggle-row" style="display: none;">
           <span class="toggle-label">Activer le mode Simulation</span>
           <label class="toggle"><input type="checkbox" id="s-simmode" /><span class="toggle-slider"></span></label>
         </div>
@@ -279,7 +390,6 @@
           </button>
         </div>
       </div>
-
 
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
         <button class="btn" id="btn-modal-cancel">Annuler</button>
@@ -292,7 +402,6 @@
   <div id="modal-pilots-overlay" class="modal-overlay-generic">
     <div id="modal-pilots" class="modal-box">
       <div class="modal-title">👥 Gestion des Pilotes</div>
-
 
       <div class="modal-section">
         <div class="modal-section-title">Invitation Telegram (Automatique)</div>
@@ -317,24 +426,165 @@
     </div>
   </div>
 
+  <!-- ── SETUP WIZARD (V2) ────────────────────────────────────── -->
+  <div id="wizard-overlay" class="wizard-overlay">
+    <div class="wizard-card">
+      <div class="wizard-header">
+        <div style="font-size:40px; margin-bottom:10px;">📡</div>
+        <h2 style="font-size:24px; font-weight:700;">Bienvenue sur LiveTrack V2</h2>
+        <p style="color:var(--text-secondary); font-size:14px; margin-top:8px;">Configuration de votre assistant de course</p>
+      </div>
+
+      <div class="wizard-body">
+        <!-- Step 1: Explanation & Bot Creation -->
+        <div class="wizard-step active" data-step="1">
+          <div class="info-box" style="margin-bottom:20px;">
+            <strong>Mode Automatique 100% Cloud</strong><br>
+            LiveTrack utilise un <strong>Bot Telegram</strong> pour communiquer en temps réel avec les pilotes.
+          </div>
+          <div class="modal-section-title">Étape 1 : Créer votre Bot</div>
+          <ol style="padding-left:20px; line-height:1.6; color:var(--text-secondary); font-size:13px;">
+            <li>Ouvrez Telegram et cherchez <strong>@BotFather</strong>.</li>
+            <li>Envoyez la commande <code>/newbot</code>.</li>
+            <li>Suivez les instructions pour choisir un nom.</li>
+            <li>@BotFather vous donnera un <strong>Token HTTP API</strong> (ex: <code>1234:ABC...</code>).</li>
+          </ol>
+        </div>
+
+        <!-- Step 2: Token Input & Verification -->
+        <div class="wizard-step" data-step="2">
+          <div class="modal-section-title">Étape 2 : Validation du Token</div>
+          <p style="margin-bottom:15px; color:var(--text-secondary); font-size:13px;">
+            Copiez le Token fourni par @BotFather et testez la connexion.
+          </p>
+          <div class="form-group">
+            <input type="text" id="wiz-token" placeholder="123456789:ABCDefGhIjK..." />
+          </div>
+          <div id="wiz-test-status" style="padding:12px; border-radius:6px; margin-bottom:12px; display:none; font-size: 13px;"></div>
+          <button class="btn btn-accent" id="btn-wiz-test" style="width:100%; justify-content:center; padding:12px;">
+            🚀 Valider le Token
+          </button>
+        </div>
+
+        <!-- Step 3: Invitation -->
+        <div class="wizard-step" data-step="3">
+          <div class="modal-section-title">Étape 3 : Invitation Pilotes</div>
+          <p style="margin-bottom:15px; line-height:1.6; color:var(--text-secondary); font-size:13px;">
+            Votre assistant est configuré. Les pilotes peuvent maintenant s'y connecter.<br><br>
+            Dans l'application (Menu Paramètres ⚙️ > Gestion des Pilotes 👥), un <strong>QR Code</strong> est disponible pour que vos pilotes rejoignent votre bot.
+          </p>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button class="btn" id="btn-wiz-prev" style="visibility:hidden;">Précédent</button>
+        <div id="wizard-dots" style="display:flex; gap:6px;">
+          <div style="width:8px; height:8px; border-radius:50%; background:var(--accent);"></div>
+          <div style="width:8px; height:8px; border-radius:50%; background:var(--border-bright);"></div>
+          <div style="width:8px; height:8px; border-radius:50%; background:var(--border-bright);"></div>
+        </div>
+        <button class="btn btn-accent" id="btn-wiz-next">Suivant</button>
+      </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ── RallyRanking Configuration Modal ──────────────────────────── -->
+  <div id="rr-config-modal" class="modal-overlay-generic">
+    <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-title">
+            ⚙️ Configuration du Scoring
+            <button id="close-rr-config" style="margin-left:auto; background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <form id="rr-config-form">
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">🏁 Nom de l'événement</label>
+                <input type="text" id="rr-cfg-name" value="Formation Roadbook AxeQuad" style="padding:8px; border-radius:4px; border:1px solid #ff4d4f; outline:none;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">📅 Date</label>
+                <input type="date" id="rr-cfg-date" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">🏆 Mode de Classement</label>
+                <select id="rr-cfg-mode" style="padding:8px; border-radius:4px; width:100%; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border);">
+                    <option value="regularity">Régularité (Pénalités)</option>
+                    <option value="time" selected>Temps Scratch (Rallye)</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">⏱️ Temps de Référence (HH:MM:SS)</label>
+                <input type="text" id="rr-cfg-maxtime" placeholder="01:30:00" value="01:30:00" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <fieldset style="border:1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <legend style="color:var(--text-muted); font-size:12px; padding:0 5px; text-transform:uppercase;">Pénalités Waypoints (secondes)</legend>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
+                    <div><label style="display:block;margin-bottom:2px">Défaut</label> <input type="number" id="rr-cfg-wp-def" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPM</label> <input type="number" id="rr-cfg-wp-wpm" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPE</label> <input type="number" id="rr-cfg-wp-wpe" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPV</label> <input type="number" id="rr-cfg-wp-wpv" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPS</label> <input type="number" id="rr-cfg-wp-wps" value="1200" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPN</label> <input type="number" id="rr-cfg-wp-wpn" value="3600" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">WPC</label> <input type="number" id="rr-cfg-wp-wpc" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">DSS/ASS</label> <input type="number" id="rr-cfg-wp-ass" value="3600" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">DZ/FZ</label> <input type="number" id="rr-cfg-wp-dz" value="900" style="padding:8px;border-radius:4px;"></div>
+                    <div><label style="display:block;margin-bottom:2px">CHECKPOINT</label> <input type="number" id="rr-cfg-wp-cp" value="3600" style="padding:8px;border-radius:4px;"></div>
+                </div>
+            </fieldset>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="display:block;margin-bottom:5px;font-size:12px;">Vitesse Globale Limitée (km/h)</label>
+                <input type="number" id="rr-cfg-speed" value="0" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="display:block;margin-bottom:2px;font-size:12px;">Coef Pénalité Survitesse</label>
+                <div style="font-size:10px; color:var(--text-muted); margin-bottom:5px;">pén = km/h_en_trop × durée(s) × coef<br>ex : coef=1 → 4km/h pendant 30s = 120s</div>
+                <input type="number" id="rr-cfg-coef" value="1" step="0.1" style="padding:8px; border-radius:4px;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                <button type="button" class="btn" id="btn-close-rr-config" style="background:#2a3441; border:none; padding:8px 20px;">Annuler</button>
+                <button type="button" class="btn btn-accent" id="btn-save-rr-config" style="border:none; color:white; padding:8px 20px;">📊 Calculer le Classement</button>
+            </div>
+        </form>
+    </div>
+  </div>
+
   <!-- ── Toast container ──────────────────────────────────────────── -->
   <div id="toast-container"></div>
-
-  <!-- ── Scripts (order matters) ─────────────────────────────────── -->
+  <!-- ── Scripts (Consolidated & Cache-Busted) ─────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/geo.js"></script>
-  <script src="js/gpx.js"></script>
-  <script src="js/alerts.js"></script>
-  <script src="js/qrcode.min.js"></script>
-  <script src="js/telegram-client.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/app.js"></script>
-
-  <!-- PWA Service Worker Registration -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="js/geo.js?v=2.5.0"></script>
+  <script src="js/gpx.js?v=2.5.0"></script>
+  <script src="js/alerts.js?v=2.5.0"></script>
+  <script src="js/qrcode.min.js?v=2.5.0"></script>
+  <script src="js/telegram-client.js?v=2.5.0"></script>
+  <script src="js/storage.js?v=2.5.0"></script>
+  <script src="js/scoring.js?v=2.5.0"></script>
+  <script src="js/parser.js?v=2.5.0"></script>
+  <script src="js/mapCanvas.js?v=2.5.0"></script>
+  <script src="js/export.js?v=2.5.0"></script>
+  <script src="js/wizard.js?v=2.5.0"></script>
+  <script src="js/map.js?v=2.5.0"></script>
+  <script src="js/rallyranking_bridge.js?v=2.5.0"></script>
+  <script src="js/app.js?v=2.5.0"></script>
+  <script src="js/simulation.js?v=2.5.0"></script>  <!-- PWA Service Worker Registration -->
   <script>
+    const APP_VERSION = '2.5.0';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+        navigator.serviceWorker.register('./sw.js?v=2.5.0').then(reg => {
           console.log('SW enregistré !', reg.scope);
         }).catch(err => {
           console.log('SW échec :', err);
@@ -348,7 +598,6 @@
     (function clock() {
       const el = document.getElementById('bar-time');
       if (el) el.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      // Also sync pilot count
       const pb = document.getElementById('bar-pilots');
       const ab = document.getElementById('bar-alerts');
       const sp = document.getElementById('stat-pilots');

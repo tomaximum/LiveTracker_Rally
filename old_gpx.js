@@ -1,59 +1,72 @@
-// ─── GPX Parser (V2 Restored with Ranking Compat) ─────────────────────────
+// ─── GPX Parser ───────────────────────────────────────────────────────────────
 'use strict';
 
-window.parseGPX = function(xmlText) {
+/**
+ * Parse a GPX XML string → { route: [{lat,lng,ele?,time?}], waypoints: [{lat,lng,name,validationRadius,openingRadius}] }
+ * Supports <trkpt> (track), <rtept> (route), <wpt> (OpenRally waypoints).
+ */
+function parseGPX(xmlText) {
     const parser = new DOMParser();
-    // application/xml est vital pour faire marcher querySelectorAll sur les namespaces dans Chrome !
     const doc = parser.parseFromString(xmlText, 'application/xml');
-    
+    const parseError = doc.querySelector('parsererror');
+    if (parseError) {
+        console.warn('GPX xml parser error, will attempt regex fallback');
+    }
+
+    console.log('Parsing GPX content, length:', xmlText.length);
+
     const points = [];
 
     // Track points (most common)
     const trkpts = doc.querySelectorAll('trkpt');
     if (trkpts.length > 0) {
-        trkpts.forEach((pt, index) => {
+        trkpts.forEach(pt => {
             const lat = parseFloat(pt.getAttribute('lat'));
             const lng = parseFloat(pt.getAttribute('lon'));
             if (!isNaN(lat) && !isNaN(lng)) {
+                const ele = pt.querySelector('ele');
                 const time = pt.querySelector('time');
-                let t = null;
-                if (time && time.textContent) {
-                    t = new Date(time.textContent).getTime();
-                }
-                // Fournir "lon" pour ScoringEngine (v2.3.1), "lng" pour Leaflet
-                points.push({ id: index, lat, lon: lng, lng: lng, time: t });
+                points.push({
+                    lat, lng,
+                    ele: ele ? parseFloat(ele.textContent) : undefined,
+                    time: time ? time.textContent : undefined
+                });
             }
         });
+        // Also parse waypoints even if track exists
         const waypoints = parseWaypoints(xmlText);
-        return { route: points, trackPoints: points, routePoints: points, waypoints };
+        return { route: points, waypoints };
     }
 
-    // Route points (often used by TerraPirata for the curvy roadbook trace!)
+    // Route points
     const rtepts = doc.querySelectorAll('rtept');
     if (rtepts.length > 0) {
-        rtepts.forEach((pt, index) => {
+        rtepts.forEach(pt => {
             const lat = parseFloat(pt.getAttribute('lat'));
             const lng = parseFloat(pt.getAttribute('lon'));
-            if (!isNaN(lat) && !isNaN(lng)) {
-                points.push({ id: index, lat, lon: lng, lng: lng });
-            }
+            if (!isNaN(lat) && !isNaN(lng)) points.push({ lat, lng });
         });
         const waypoints = parseWaypoints(xmlText);
-        return { route: points, trackPoints: points, routePoints: points, waypoints };
+        return { route: points, waypoints };
     }
 
-    // Only waypoints
+    // Only waypoints (no track/route)
     const waypoints = parseWaypoints(xmlText);
-    return { route: [], trackPoints: [], routePoints: [], waypoints };
-};
+    if (waypoints.length > 0) {
+        return { route: [], waypoints };
+    }
 
-// Injection du module global
-window.GPXParser = {
-    parse: window.parseGPX
-};
+    throw new Error('No track/route or waypoints found in GPX');
+}
 
+/**
+ * Parse OpenRally <wpt> blocks from raw XML text using regex for robustness.
+ * Extracts name, lat, lng, validationRadius (clear), openingRadius (open).
+ */
 function parseWaypoints(xmlText) {
     const waypoints = [];
+    
+    // Match all <wpt ...> ... </wpt> blocks
     const wptRegex = /<wpt([^>]*)>([\s\S]*?)<\/wpt>/gi;
     let match;
     
@@ -77,6 +90,7 @@ function parseWaypoints(xmlText) {
                 if (nameMatch) name = nameMatch[1].trim();
                 
                 let km = '';
+                // Extract KM from name, desc, or cmt
                 const kmRegex = /(\d+[.,]\d+|\d+)\s*(k|km)/i;
                 let kmTarget = `${name} ${cmtMatch ? cmtMatch[1] : ''} ${descMatch ? descMatch[1] : ''}`;
                 const kmMatch = kmTarget.match(kmRegex);
@@ -84,6 +98,7 @@ function parseWaypoints(xmlText) {
                     km = kmMatch[1].replace(',', '.') + ' km';
                 }
 
+                // If name is just a number, try to use desc or cmt for more detail
                 if (/^\d+$/.test(name)) {
                     if (descMatch) name = `${name}: ${descMatch[1].trim()}`;
                     else if (cmtMatch) name = `${name}: ${cmtMatch[1].trim()}`;
@@ -97,8 +112,9 @@ function parseWaypoints(xmlText) {
                 const symMatch  = innerXml.match(/<sym[^>]*>([\s\S]*?)<\/sym>/i);
                 
                 if (typeMatch) type = typeMatch[1].trim();
-                else if (symMatch) type = symMatch[1].trim(); 
+                else if (symMatch) type = symMatch[1].trim(); // Fallback to sym
                 
+                // Map OpenRally tags to readable types
                 const orMappings = {
                     'dz': 'Début Zone (DZ)',
                     'fz': 'Fin Zone (FZ)',
@@ -122,9 +138,15 @@ function parseWaypoints(xmlText) {
                     }
                 }
                 
+                if (!type && (typeMatch || symMatch)) {
+                    console.log(`Using standard Type/Sym: ${type} for WP ${name}`);
+                }
+                
                 let validationRadius = undefined; 
                 let openingRadius = undefined;    
                 
+                // Match <openrally:wpv clear="50" open="800"> or <openrally:dz ...>
+                // Using [\s\S]*? so it handles attributes across newlines
                 const wpvMatch = innerXml.match(/<openrally:wpv([\s\S]*?)(\/?>)/i);
                 if (wpvMatch) {
                     const clearMatch = wpvMatch[1].match(/clear="([^"]+)"/i);
@@ -141,6 +163,7 @@ function parseWaypoints(xmlText) {
                     if (openMatch)  openingRadius    = parseFloat(openMatch[1]);
                 }
                 
+                // Generic fallback: look anywhere in extensions
                 if (!wpvMatch && !dzMatch) {
                     const extsMatch = innerXml.match(/<extensions>([\s\S]*?)<\/extensions>/i);
                     if (extsMatch) {
@@ -151,10 +174,35 @@ function parseWaypoints(xmlText) {
                     }
                 }
 
-                // Fournir "lon" et "lng" pour garantir la rétro-compatibilité avec le bridge Scoring
-                waypoints.push({ lat, lng, lon: lng, name, type, validationRadius, openingRadius, km });
+                waypoints.push({ lat, lng, name, type, validationRadius, openingRadius, km });
             }
         }
     }
+    
     return waypoints;
+}
+
+/**
+ * Simplify a route using Ramer-Douglas-Peucker for performance.
+ * epsilon in metres.
+ */
+function simplifyRoute(points, epsilon = 10) {
+    if (points.length <= 2) return points;
+
+    function dpSimplify(pts, eps) {
+        if (pts.length <= 2) return pts;
+        let maxDist = 0, maxIdx = 0;
+        for (let i = 1; i < pts.length - 1; i++) {
+            const d = distanceToSegment(pts[i], pts[0], pts[pts.length - 1]);
+            if (d > maxDist) { maxDist = d; maxIdx = i; }
+        }
+        if (maxDist > eps) {
+            const left = dpSimplify(pts.slice(0, maxIdx + 1), eps);
+            const right = dpSimplify(pts.slice(maxIdx), eps);
+            return [...left.slice(0, -1), ...right];
+        }
+        return [pts[0], pts[pts.length - 1]];
+    }
+
+    return dpSimplify(points, epsilon);
 }
