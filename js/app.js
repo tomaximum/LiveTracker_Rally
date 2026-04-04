@@ -285,7 +285,7 @@ async function restorePilotsFromLocal() {
  */
 function exportLiveTraces() {
     const participants = [...state.participants.values()];
-    const withHistory = participants.filter(p => p.data.history && p.data.history.length > 1);
+    const withHistory = participants.filter(p => p.data.history && p.data.history.length > 0);
     
     if (withHistory.length === 0) {
         showToast("Aucune trace à exporter", "error");
@@ -1092,6 +1092,7 @@ function initUI() {
         if (e.target.checked) document.body.classList.remove('hide-wp-labels');
         else document.body.classList.add('hide-wp-labels');
     };
+    const togglePilotTraces = document.getElementById('toggle-pilot-traces');
     if (togglePilotTraces) {
         togglePilotTraces.checked = state.settings.showPilotTraces;
         togglePilotTraces.onchange = (e) => {

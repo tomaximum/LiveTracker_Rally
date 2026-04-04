@@ -4,12 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LiveTrack Rally v2.0.9 — Live Tracking & Scoring</title>
+  <title>LiveTrack Rally v2.5.0 — Live Tracking & Scoring</title>
   <meta name="description"
-    content="La version v2.0.9 est 100% statique. Tout se passe directement dans votre navigateur :
+    content="La version v2.5.0 est 100% statique. Tout se passe directement dans votre navigateur :
 - Pas de serveur : Aucune installation Python (PC/Mac) n'est requise.
-- Autonomie : Assistant de configuration Telegram V2 intégré.
-- Multi-Onglets : Suivi Live et Résultats dans une interface unique." />
+- Autonomie : Assistant de configuration Telegram V2 intégré." />
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,9 +16,11 @@
   <link rel="stylesheet" href="css/style.css?v=2.0.4" />
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="theme-color" content="#3b82f6" />
-  <link rel="apple-touch-icon" href="icons/icon-512.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
   <!-- iOS specific -->
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="LiveTrack" />
@@ -33,7 +34,7 @@
       <button id="mobile-menu-btn" class="btn" style="display:none;padding:5px 10px;font-size:18px">☰</button>
       <div class="logo">
         <div class="dot">📡</div>
-        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v2.0.9</span>
+        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v2.5.0</span>
       </div>
 
       <div class="topbar-spacer"></div>

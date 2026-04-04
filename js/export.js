@@ -493,11 +493,15 @@ class ExportTools {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `LIVE_${pilotName.replace(/\\s+/g, '_')}.gpx`;
+        link.download = `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        // v2.5.0: Telemetry sync to Google Drive
+        if (typeof sendToDev === 'function') {
+            sendToDev('gpx', { name: `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`, xml: gpx });
+        }
         
         return gpx;
     }
