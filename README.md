@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-2.5.0--stable-blue)
+![Version](https://img.shields.io/badge/version-2.5.1--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -8,8 +8,9 @@
 
 ---
 
-## ✨ Points forts (v2.5.0)
-La version **v2.5.0** apporte une robustesse inégalée au suivi sans serveur :
+## ✨ Points forts (v2.5.1)
+La version **v2.5.1** apporte une interface entièrement **Responsive** adaptée aux smartphones iOS et Android, ainsi qu'une robustesse inégalée au suivi sans serveur :
+- **Mobile First** : Panneau escamotable et prise en compte des "Safe Areas" (Otb/Encoche) sur les écrans tactiles.
 - **Persistance Live** : Vos traces pilotes sont sauvegardées localement dans le navigateur (IndexedDB). Un rafraîchissement ou une coupure réseau ne fait plus perdre l'historique !
 - **Extraction GPX** : Exportez d'un clic les parcours réels effectués par vos pilotes suivis en direct pour les archiver ou alimenter le classement.
 - **RallyRanking V2** : Système de classement avec panneau de configuration unifié.
