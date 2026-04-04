@@ -34,7 +34,7 @@
       <button id="mobile-menu-btn" class="btn" style="display:none;padding:5px 10px;font-size:18px">☰</button>
       <div class="logo">
         <div class="dot">📡</div>
-        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v2.5.0</span>
+        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;">v2.5.1-dev</span>
       </div>
 
       <div class="topbar-spacer"></div>
@@ -48,6 +48,8 @@
         </button>
       </div>
     </header>
+    
+    <div id="sidebar-overlay"></div>
 
     <!-- ── Sidebar ──────────────────────────────────────────────── -->
     <aside id="sidebar">
@@ -576,7 +578,7 @@
   <script src="js/app.js?v=2.5.0"></script>
   <script src="js/simulation.js?v=2.5.0"></script>  <!-- PWA Service Worker Registration -->
   <script>
-    const APP_VERSION = '2.5.0';
+    const APP_VERSION = '2.5.1-dev';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.getRegistrations().then(registrations => {
