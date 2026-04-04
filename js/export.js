@@ -471,5 +471,35 @@ class ExportTools {
         }
 
     }
+
+    /**
+     * Génère un fichier GPX à partir de l'historique d'un pilote
+     */
+    static generateGPXFromHistory(pilotName, history) {
+        if (!history || history.length === 0) return null;
+
+        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        gpx += '<gpx version="1.1" creator="LiveTracker Rally" xmlns="http://www.topografix.com/GPX/1/1">\n';
+        gpx += `  <trk>\n    <name>${pilotName}</name>\n    <trkseg>\n`;
+
+        history.forEach(pt => {
+            const time = new Date(pt.ts).toISOString();
+            gpx += `      <trkpt lat="${pt.lat}" lon="${pt.lng}"><time>${time}</time></trkpt>\n`;
+        });
+
+        gpx += '    </trkseg>\n  </trk>\n</gpx>';
+
+        const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `LIVE_${pilotName.replace(/\\s+/g, '_')}.gpx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        return gpx;
+    }
 }
 

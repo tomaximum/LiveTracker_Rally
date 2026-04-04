@@ -269,13 +269,51 @@ async function restorePilotsFromLocal() {
     console.log('[Storage] Restauration des pilotes depuis IndexedDB...');
     try {
         const pilots = await dbGetAllPilots();
+        // Sort to maintain same order if needed
         pilots.forEach(p => {
-            // Re-simulate update for each pilot to restore marker and history (v1.2.0 fix)
+            // Re-simulate update for each pilot to restore marker and history
             updateParticipant(p);
         });
+        console.log(`[Storage] ${pilots.length} pilote(s) restauré(s).`);
     } catch (e) {
         console.error('[Storage] Erreur de restauration des pilotes :', e);
     }
+}
+
+/**
+ * v2.5.0: Export all live participant traces as GPX files
+ */
+function exportLiveTraces() {
+    const participants = [...state.participants.values()];
+    const withHistory = participants.filter(p => p.data.history && p.data.history.length > 1);
+    
+    if (withHistory.length === 0) {
+        showToast("Aucune trace à exporter", "error");
+        return;
+    }
+    
+    showToast(`Exportation de ${withHistory.length} trace(s)...`, "success");
+    
+    withHistory.forEach(p => {
+        ExportTools.generateGPXFromHistory(p.data.name || p.id, p.data.history);
+    });
+}
+
+/**
+ * v2.5.0: Clear all live trace histories
+ */
+async function clearLiveTraces() {
+    if (!confirm("Voulez-vous vraiment effacer l'historique de TOUTES les traces live ? Les pilotes resteront sur la carte à leur dernière position.")) return;
+    
+    state.participants.forEach(p => {
+        p.data.history = [];
+        if (p.trail) {
+            p.trail.setLatLngs([]);
+        }
+        savePilotToLocal(p.id, p.data);
+    });
+    
+    showToast("Traces live réinitialisées", "success");
 }
 
 function unloadGPX(id) {
@@ -1054,13 +1092,23 @@ function initUI() {
         if (e.target.checked) document.body.classList.remove('hide-wp-labels');
         else document.body.classList.add('hide-wp-labels');
     };
-    const togglePilotTraces = document.getElementById('toggle-pilot-traces');
     if (togglePilotTraces) {
         togglePilotTraces.checked = state.settings.showPilotTraces;
         togglePilotTraces.onchange = (e) => {
             state.settings.showPilotTraces = e.target.checked;
             updatePilotTraces();
+            saveSettings();
         };
+    }
+
+    // v2.5.0: Live Traces Controls
+    const btnExportLive = document.getElementById('btn-export-live-gpx');
+    if (btnExportLive) {
+        btnExportLive.onclick = () => exportLiveTraces();
+    }
+    const btnClearLive = document.getElementById('btn-clear-live-traces');
+    if (btnClearLive) {
+        btnClearLive.onclick = () => clearLiveTraces();
     }
 
     const handleFile = (file) => {

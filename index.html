@@ -119,6 +119,16 @@
             <div>Aucun pilote.<br>Cliquez sur le ➕ pour en ajouter.</div>
           </div>
         </div>
+        
+        <!-- v2.5.0 Live Traces controls -->
+        <div style="padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn" id="btn-export-live-gpx" style="width:100%; font-size:11px; background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); color:var(--accent);">
+            💾 Extraire Traces (GPX)
+          </button>
+          <button class="btn" id="btn-clear-live-traces" style="width:100%; font-size:11px; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444;">
+            🧹 Vider Traces Live
+          </button>
+        </div>
       </div>
 
       <!-- Alerts -->
@@ -136,7 +146,7 @@
       </div>
       <!-- Version Footer -->
       <div style="margin-top:auto;padding:12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center;">
-        <em>Développé par Antigravity, Gemini et Tomaximum — Version 2.0.4 (Cloud ☁️)</em><br>
+        <em>Développé par Antigravity et Tomaximum — Version 2.5.0 (Cloud ☁️)</em><br>
         <small>Licence MIT — <a href="LICENSE" style="color:var(--text-secondary)">Voir la licence</a></small>
       </div>
       </div> <!-- End tab-live -->
@@ -549,23 +559,23 @@
   <!-- ── Scripts (Consolidated & Cache-Busted) ─────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="js/geo.js?v=2.4.0"></script>
-  <script src="js/gpx.js?v=2.4.0"></script>
-  <script src="js/alerts.js?v=2.4.0"></script>
-  <script src="js/qrcode.min.js?v=2.4.0"></script>
-  <script src="js/telegram-client.js?v=2.4.0"></script>
-  <script src="js/storage.js?v=2.4.0"></script>
-  <script src="js/scoring.js?v=2.4.0"></script>
-  <script src="js/parser.js?v=2.4.0"></script>
-  <script src="js/mapCanvas.js?v=2.4.0"></script>
-  <script src="js/export.js?v=2.4.0"></script>
-  <script src="js/wizard.js?v=2.4.0"></script>
-  <script src="js/map.js?v=2.4.0"></script>
-  <script src="js/rallyranking_bridge.js?v=2.4.0"></script>
-  <script src="js/app.js?v=2.4.0"></script>
-  <script src="js/simulation.js?v=2.4.0"></script>  <!-- PWA Service Worker Registration -->
+  <script src="js/geo.js?v=2.5.0"></script>
+  <script src="js/gpx.js?v=2.5.0"></script>
+  <script src="js/alerts.js?v=2.5.0"></script>
+  <script src="js/qrcode.min.js?v=2.5.0"></script>
+  <script src="js/telegram-client.js?v=2.5.0"></script>
+  <script src="js/storage.js?v=2.5.0"></script>
+  <script src="js/scoring.js?v=2.5.0"></script>
+  <script src="js/parser.js?v=2.5.0"></script>
+  <script src="js/mapCanvas.js?v=2.5.0"></script>
+  <script src="js/export.js?v=2.5.0"></script>
+  <script src="js/wizard.js?v=2.5.0"></script>
+  <script src="js/map.js?v=2.5.0"></script>
+  <script src="js/rallyranking_bridge.js?v=2.5.0"></script>
+  <script src="js/app.js?v=2.5.0"></script>
+  <script src="js/simulation.js?v=2.5.0"></script>  <!-- PWA Service Worker Registration -->
   <script>
-    const APP_VERSION = '2.4.0';
+    const APP_VERSION = '2.5.0';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -573,7 +583,7 @@
             registration.unregister();
           }
         });
-        navigator.serviceWorker.register('./sw.js?v=2.4.0').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=2.5.0').then(reg => {
           console.log('SW enregistré !', reg.scope);
         }).catch(err => {
           console.log('SW échec :', err);
