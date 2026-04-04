@@ -260,6 +260,63 @@ class RallyMap {
         Object.entries(this.competitorLayers).forEach(([n, data]) => {
             this._applyStyleToEntry(n, data, true);
         });
+        if (this._tempPenLayer) {
+            this.map.removeLayer(this._tempPenLayer);
+            this._tempPenLayer = null;
+        }
+    }
+
+    focusOnPenalty(name, pen, competitorTracks = null) {
+        this.highlightCompetitor(name);
+
+        let bounds = null;
+
+        if (this._tempPenLayer) {
+            this.map.removeLayer(this._tempPenLayer);
+            this._tempPenLayer = null;
+        }
+
+        if (pen.type === 'WPT_MISSED' && pen.waypoint) {
+            const w = pen.waypoint;
+            const lat = w.lat;
+            const lon = w.lng !== undefined ? w.lng : w.lon;
+            bounds = L.latLngBounds([[lat, lon], [lat, lon]]);
+
+            L.popup({ autoClose: false })
+                .setLatLng([lat, lon])
+                .setContent(`<div style="color:#d63031; font-weight:bold; text-align:center;">${w.name}<br/>WP Manqué</div>`)
+                .openOn(this.map);
+                
+            // The popup acts as the temp layer to be cleared if clicked elsewhere or re-highlighted
+            this._tempPenLayer = this.map._popup;
+        }
+        else if (pen.type === 'OVERSPEED' && pen.startTime && pen.lastTime && competitorTracks) {
+            const seg = competitorTracks.filter(p => p.time >= pen.startTime && p.time <= pen.lastTime);
+            if (seg.length > 0) {
+                const latlngs = seg.map(p => [p.lat, p.lon]);
+                bounds = L.latLngBounds(latlngs);
+                
+                this._tempPenLayer = L.polyline(latlngs, {
+                    color: '#ff0000',
+                    weight: 8,
+                    opacity: 0.9,
+                    className: 'pulse-line'
+                }).addTo(this.map);
+
+                // Add a small popup indicating speed
+                const midPoint = latlngs[Math.floor(latlngs.length / 2)];
+                if (midPoint) {
+                    L.popup({ autoClose: true })
+                        .setLatLng(midPoint)
+                        .setContent(`<div style="color:#ff0000; font-weight:bold;">Survitesse</div>`)
+                        .openOn(this.map);
+                }
+            }
+        }
+
+        if (bounds && bounds.isValid()) {
+            this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+        }
     }
 
     // ── Styles internes ───────────────────────────────────────────────

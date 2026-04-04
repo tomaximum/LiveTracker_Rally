@@ -22,10 +22,17 @@ class MapCanvas {
      * @returns {string} dataURL
      */
     static renderToCanvas(canvas, roadbook, competitorResult) {
+        // Automatically ensure high-res if default small canvas is passed
+        if (canvas.width <= 300) canvas.width = 1200;
+        if (canvas.height <= 150) canvas.height = 800;
+
         const W = canvas.width;
         const H = canvas.height;
         const ctx = canvas.getContext('2d');
-        const PAD = 30; // padding en px
+        const PAD = W * 0.05; // 5% padding
+        
+        // Dynamic scaling based on canvas size (ref size 800x600)
+        const S = Math.min(W / 800, H / 600);
 
         ctx.clearRect(0, 0, W, H);
 
@@ -77,9 +84,9 @@ class MapCanvas {
         const rbTrack = roadbook.trackPoints || [];
         if (rbTrack.length > 1) {
             ctx.beginPath();
-            ctx.setLineDash([8, 5]);
+            ctx.setLineDash([8 * S, 5 * S]);
             ctx.strokeStyle = '#4A90D9';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2 * S;
             ctx.globalAlpha = 0.6;
             rbTrack.forEach((p, i) => {
                 i === 0 ? ctx.moveTo(toX(p.lon), toY(p.lat)) : ctx.lineTo(toX(p.lon), toY(p.lat));
@@ -101,18 +108,18 @@ class MapCanvas {
         if (tracks.length > 1) {
             // Trace de base
             ctx.beginPath();
-            ctx.strokeStyle = '#E74C3C';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#222222'; // Noir pour la trace pilote
+            ctx.lineWidth = 3 * S;
             tracks.forEach((p, i) => {
                 i === 0 ? ctx.moveTo(toX(p.lon), toY(p.lat)) : ctx.lineTo(toX(p.lon), toY(p.lat));
             });
             ctx.stroke();
 
-            // Surcouche orange pour les segments en survitesse
+            // Surcouche rouge plus épaisse pour les segments en survitesse
             if (overspeedIntervals.length > 0) {
-                ctx.lineWidth = 5;
-                ctx.strokeStyle = '#F39C12';
-                ctx.globalAlpha = 0.75;
+                ctx.lineWidth = 8 * S; // Plus épais (était 6)
+                ctx.strokeStyle = '#E74C3C'; // Rouge (était orange)
+                ctx.globalAlpha = 0.85;
                 for (let i = 1; i < tracks.length; i++) {
                     const p = tracks[i];
                     const pPrev = tracks[i - 1];
@@ -147,8 +154,8 @@ class MapCanvas {
             if (type === 'dss' || type === 'ass') {
                 // Triangle DSS (vert) / ASS (rouge)
                 const color = type === 'dss' ? '#2ECC71' : '#E74C3C';
-                MapCanvas._drawTriangle(ctx, x, y, 10, color);
-                MapCanvas._drawLabel(ctx, w.name || 'DSS', x, y - 14, '#333');
+                MapCanvas._drawTriangle(ctx, x, y, 12 * S, color);
+                MapCanvas._drawLabel(ctx, w.name || 'DSS', x, y - (18 * S), '#333', 12 * S);
             } else {
                 // Cercle coloré selon statut
                 const fillColor = status === 'VALID' ? '#00B894'
@@ -156,26 +163,26 @@ class MapCanvas {
                     : status === 'NOT_REACHED' ? '#D63031'
                     : '#95A5A6'; // gris = non encore atteint dans le log
 
-                const r = 7;
+                const r = 8 * S;
                 ctx.beginPath();
                 ctx.arc(x, y, r, 0, Math.PI * 2);
                 ctx.fillStyle = fillColor;
                 ctx.fill();
                 ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
+                ctx.lineWidth = 2 * S;
                 ctx.stroke();
 
                 // Label numéro
                 if (status === 'MISSED' || status === 'NOT_REACHED') {
                     // Croix ×
                     ctx.fillStyle = '#fff';
-                    ctx.font = `bold 9px sans-serif`;
+                    ctx.font = `bold ${Math.round(11 * S)}px sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText('×', x, y);
                 } else {
                     ctx.fillStyle = '#fff';
-                    ctx.font = `bold 8px sans-serif`;
+                    ctx.font = `bold ${Math.round(9 * S)}px sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(w.name || String(idx + 1), x, y);
@@ -184,9 +191,9 @@ class MapCanvas {
         });
 
         // ── Légende ───────────────────────────────────────────────────
-        MapCanvas._drawLegend(ctx, W, H);
+        MapCanvas._drawLegend(ctx, W, H, S);
 
-        return canvas.toDataURL('image/png');
+        return canvas.toDataURL('image/png', 1.0);
     }
 
     static _drawTriangle(ctx, x, y, size, color) {
@@ -202,60 +209,69 @@ class MapCanvas {
         ctx.stroke();
     }
 
-    static _drawLabel(ctx, text, x, y, color = '#333') {
+    static _drawLabel(ctx, text, x, y, color = '#333', fontSize = 9) {
         ctx.fillStyle = color;
-        ctx.font = 'bold 9px sans-serif';
+        ctx.font = `bold ${Math.round(fontSize)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, x, y);
     }
 
-    static _drawLegend(ctx, W, H) {
+    static _drawLegend(ctx, W, H, S) {
         const items = [
             { color: '#4A90D9', label: 'Roadbook', dash: true },
-            { color: '#E74C3C', label: 'Trace concurrent' },
-            { color: '#F39C12', label: 'Survitesse', thick: true },
+            { color: '#222222', label: 'Trace concurrent' },
+            { color: '#E74C3C', label: 'Survitesse', thick: true },
             { color: '#00B894', label: 'WP validé', circle: true },
             { color: '#D63031', label: 'WP raté', circle: true },
             { color: '#2ECC71', label: 'DSS', triangle: true },
             { color: '#E74C3C', label: 'ASS', triangle: true },
         ];
 
-        const lx = W - 130;
-        let ly = H - items.length * 16 - 10;
+        const legW = 160 * S;
+        const legItemH = 22 * S;
+        const legPad = 12 * S;
+        const lx = W - legW - 20 * S;
+        let ly = H - (items.length * legItemH) - 20 * S;
 
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillRect(lx - 8, ly - 8, 130, items.length * 16 + 14);
-        ctx.strokeStyle = '#ccc';
+        // Ombre portée de la légende
+        ctx.shadowColor = 'rgba(0,0,0,0.1)';
+        ctx.shadowBlur = 10 * S;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fillRect(lx - legPad, ly - legPad, legW + legPad * 2, items.length * legItemH + legPad * 2);
+        
+        // Reset l'ombre pour le texte et les tracés
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#ddd';
         ctx.lineWidth = 1;
         ctx.setLineDash([]);
-        ctx.strokeRect(lx - 8, ly - 8, 130, items.length * 16 + 14);
+        ctx.strokeRect(lx - legPad, ly - legPad, legW + legPad * 2, items.length * legItemH + legPad * 2);
 
         items.forEach(item => {
             ctx.save();
             if (item.circle) {
                 ctx.beginPath();
-                ctx.arc(lx + 6, ly + 1, 5, 0, Math.PI * 2);
+                ctx.arc(lx + 8 * S, ly + 2 * S, 7 * S, 0, Math.PI * 2);
                 ctx.fillStyle = item.color;
                 ctx.fill();
             } else if (item.triangle) {
-                MapCanvas._drawTriangle(ctx, lx + 6, ly + 1, 5, item.color);
+                MapCanvas._drawTriangle(ctx, lx + 8 * S, ly + 2 * S, 7 * S, item.color);
             } else {
                 ctx.beginPath();
-                ctx.setLineDash(item.dash ? [4, 3] : []);
+                ctx.setLineDash(item.dash ? [6 * S, 4 * S] : []);
                 ctx.strokeStyle = item.color;
-                ctx.lineWidth = item.thick ? 4 : 2;
-                ctx.moveTo(lx, ly + 1);
-                ctx.lineTo(lx + 14, ly + 1);
+                ctx.lineWidth = item.thick ? 6 * S : 3 * S; // Augmenté pour la légende 'thick'
+                ctx.moveTo(lx, ly + 2 * S);
+                ctx.lineTo(lx + 20 * S, ly + 2 * S);
                 ctx.stroke();
             }
             ctx.restore();
             ctx.fillStyle = '#222';
-            ctx.font = '9px sans-serif';
+            ctx.font = `${Math.round(12 * S)}px sans-serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(item.label, lx + 18, ly + 1);
-            ly += 16;
+            ctx.fillText(item.label, lx + 30 * S, ly + 2 * S);
+            ly += legItemH;
         });
     }
 }

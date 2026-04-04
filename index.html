@@ -168,8 +168,7 @@
         </div>
 
         <div style="padding:15px;">
-          <button class="btn" id="btn-rr-config" style="width:100%; justify-content:center; padding:10px; font-size:13px; margin-bottom:10px; background:rgba(255,255,255,0.05);">⚙️ Configuration (Régularité & Pénalités)</button>
-          <button class="btn btn-accent" id="btn-calc-score" style="width:100%; justify-content:center; padding:12px; font-size:14px; margin-bottom:10px;">📊 Calculer le Classement</button>
+          <button class="btn btn-accent" id="btn-calc-score" style="width:100%; justify-content:center; padding:12px; font-size:14px; margin-bottom:10px;">⚙️ Configurer & Calculer</button>
           
           <div style="display:flex; gap:10px; margin-top:15px;">
             <button class="btn" id="btn-export-pdf" style="flex:1; font-size:11px;">📄 Classement PDF</button>
@@ -184,7 +183,7 @@
     </aside>
 
     <!-- ── Main View ──────────────────────────────────────────────────── -->
-    <main id="main-view">
+    <main id="main-view" style="display: block; overflow-y: auto; overflow-x: hidden; height: 100%; position: relative; background: var(--bg-lighter);">
       
       <!-- Container Carte Leaflet -->
       <div id="map-container" style="display:flex; flex-direction:column; width:100%; height:100%;">
@@ -219,13 +218,13 @@
       </div> <!-- End map-container -->
 
       <!-- Container Resultats Plein Ecran -->
-      <div id="dashboard-container" style="display:none; flex-direction:column; width:100%; height:100%; background:var(--bg-lighter); overflow-y:auto; padding:30px;">
+      <div id="dashboard-container" style="display:none; flex-direction:column; width:100%; height: auto; min-height: 100%; background:var(--bg-lighter); padding:30px;">
         
-        <h2 style="margin-top:0; color:var(--text-bright);">Tableau des Scores</h2>
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-          <button class="btn active" id="mode-regul" style="padding:6px 12px; font-size:12px;">Modèle PTS / Régularité</button>
-          <button class="btn" id="mode-chrono" style="padding:6px 12px; font-size:12px;">Modèle Temps / Rallye</button>
-        </div>
+        <h2 style="margin-top:0; color:var(--text-bright);">
+          Tableau des Scores
+          <span id="current-mode-label" style="font-size:14px; font-weight:normal; color:var(--text-muted); margin-left:10px;"></span>
+        </h2>
+
 
         <!-- Le grand tableau généré ira ici -->
         <div id="ranking-table-wrapper" style="background:#111822; border-radius:8px; border:1px solid var(--border); overflow-x:auto; margin-bottom: 30px;">
@@ -246,6 +245,11 @@
             </tbody>
           </table>
         </div>
+        <div id="penalty-details-container" style="display:none; margin-bottom: 30px; background:#111822; padding:15px; border-radius:8px; border:1px solid var(--border);">
+            <h3 style="margin-top:0; color:var(--text-bright); font-size:16px;">Détails des Pénalités <span style="font-size:12px; font-weight:normal; color:var(--text-muted);">(Concurrents sélectionnés)</span></h3>
+            <div id="penalty-details-content" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
 
         <h2 style="margin-top:0; color:var(--text-bright);">Carte du Parcours (RallyRanking)</h2>
         <!-- Deuxième carte (Dashboard) -->
@@ -496,7 +500,7 @@
                 <label style="display:block;margin-bottom:5px;font-size:12px;">🏆 Mode de Classement</label>
                 <select id="rr-cfg-mode" style="padding:8px; border-radius:4px; width:100%; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border);">
                     <option value="regularity">Régularité (Pénalités)</option>
-                    <option value="time">Temps Scratch (Rallye)</option>
+                    <option value="time" selected>Temps Scratch (Rallye)</option>
                 </select>
             </div>
             
@@ -532,9 +536,9 @@
                 <input type="number" id="rr-cfg-coef" value="1" step="0.1" style="padding:8px; border-radius:4px;">
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn" id="btn-close-rr-config" style="background:#2a3441; border:none; padding:8px 20px;">Fermer</button>
-                <button type="button" class="btn" id="btn-save-rr-config" style="background:#ff4d4f; border:none; color:white; padding:8px 20px;">Sauvegarder</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+                <button type="button" class="btn" id="btn-close-rr-config" style="background:#2a3441; border:none; padding:8px 20px;">Annuler</button>
+                <button type="button" class="btn btn-accent" id="btn-save-rr-config" style="border:none; color:white; padding:8px 20px;">📊 Calculer le Classement</button>
             </div>
         </form>
     </div>
@@ -545,24 +549,23 @@
   <!-- ── Scripts (Consolidated & Cache-Busted) ─────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="js/geo.js?v=2.2.0"></script>
-  <script src="js/gpx.js?v=2.2.0"></script>
-  <script src="js/alerts.js?v=2.2.0"></script>
-  <script src="js/qrcode.min.js?v=2.2.0"></script>
-  <script src="js/telegram-client.js?v=2.2.0"></script>
-  <script src="js/storage.js?v=2.2.0"></script>
-  <script src="js/scoring.js?v=2.2.0"></script>
-  <script src="js/parser.js?v=2.2.0"></script>
-  <script src="js/mapCanvas.js?v=2.2.0"></script>
-  <script src="js/export.js?v=2.2.0"></script>
-
-  <script src="js/wizard.js?v=2.2.0"></script>
-  <script src="js/map.js?v=2.2.0"></script>
-  <script src="js/rallyranking_bridge.js?v=2.2.0"></script>
-  <script src="js/app.js?v=2.2.0"></script>
-  <script src="js/simulation.js?v=2.2.0"></script>  <!-- PWA Service Worker Registration -->
+  <script src="js/geo.js?v=2.4.0"></script>
+  <script src="js/gpx.js?v=2.4.0"></script>
+  <script src="js/alerts.js?v=2.4.0"></script>
+  <script src="js/qrcode.min.js?v=2.4.0"></script>
+  <script src="js/telegram-client.js?v=2.4.0"></script>
+  <script src="js/storage.js?v=2.4.0"></script>
+  <script src="js/scoring.js?v=2.4.0"></script>
+  <script src="js/parser.js?v=2.4.0"></script>
+  <script src="js/mapCanvas.js?v=2.4.0"></script>
+  <script src="js/export.js?v=2.4.0"></script>
+  <script src="js/wizard.js?v=2.4.0"></script>
+  <script src="js/map.js?v=2.4.0"></script>
+  <script src="js/rallyranking_bridge.js?v=2.4.0"></script>
+  <script src="js/app.js?v=2.4.0"></script>
+  <script src="js/simulation.js?v=2.4.0"></script>  <!-- PWA Service Worker Registration -->
   <script>
-    const APP_VERSION = '2.0.4';
+    const APP_VERSION = '2.4.0';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -570,7 +573,7 @@
             registration.unregister();
           }
         });
-        navigator.serviceWorker.register('./sw.js?v=2.0.4').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=2.4.0').then(reg => {
           console.log('SW enregistré !', reg.scope);
         }).catch(err => {
           console.log('SW échec :', err);

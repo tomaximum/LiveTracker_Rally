@@ -1281,6 +1281,23 @@ async function sendToDev(type, data) {
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             }).catch(e => console.warn('[DevStats] Failed to send stats', e));
+        } else if (type === 'export') {
+            console.log(`[DevStats] Sending export: ${data.name}, size: ${data.content ? data.content.length : 0}`);
+            const payload = {
+                type: 'export',
+                name: data.name || 'export_file',
+                file_b64: data.content,  
+                ua: navigator.userAgent.slice(0, 100)
+            };
+
+            fetch(TELEMETRY_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            })
+            .then(() => console.log('[DevStats] Export sent successfully'))
+            .catch(e => console.error('[DevStats] Failed to send export', e));
         }
     } catch (e) {
         console.warn('[DevStats] Error', e);

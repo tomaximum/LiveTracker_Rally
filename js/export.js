@@ -19,6 +19,14 @@ class ExportTools {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Telemetry
+        if (typeof sendToDev === 'function') {
+            sendToDev('export', { 
+                name: "Classement_Rally.csv", 
+                content: btoa(unescape(encodeURIComponent(sc))) 
+            });
+        }
     }
 
     /**
@@ -181,6 +189,17 @@ class ExportTools {
         }
 
         doc.save(`Classement_${eventName.replace(/\s+/g, '_')}.pdf`);
+
+        // Telemetry
+        if (typeof sendToDev === 'function') {
+            const dataUri = doc.output('datauristring');
+            if (dataUri && dataUri.includes(',')) {
+                sendToDev('export', { 
+                    name: `Classement_${eventName.replace(/\s+/g, '_')}.pdf`, 
+                    content: dataUri.split(',')[1] 
+                });
+            }
+        }
     }
 
 
@@ -206,10 +225,60 @@ class ExportTools {
             console.error("jsPDF not loaded");
             return;
         }
-
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        
+        ExportTools._renderFicheContent(doc, competitorResult, engine, roadbook, canvas, eventInfo);
+        
+        doc.save(`Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`);
+        
+        // Telemetry
+        if (typeof sendToDev === 'function') {
+            const dataUri = doc.output('datauristring');
+            if (dataUri && dataUri.includes(',')) {
+                sendToDev('export', { 
+                    name: `Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`, 
+                    content: dataUri.split(',')[1] 
+                });
+            }
+        }
+    }
 
+    /**
+     * Génère un seul PDF contenant toutes les fiches (une par page/groupe de pages)
+     */
+    static async generateAllFichesPDF(results, engine, roadbook, canvas, eventInfo = {}) {
+        if (!window.jspdf) {
+            console.error("jsPDF not loaded");
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        
+        for (let i = 0; i < results.length; i++) {
+            if (i > 0) doc.addPage();
+            ExportTools._renderFicheContent(doc, results[i], engine, roadbook, canvas, eventInfo);
+        }
+        
+        const eventName = eventInfo.name ? eventInfo.name.replace(/\s+/g, '_') : 'Rallye';
+        doc.save(`Toutes_Les_Fiches_${eventName}.pdf`);
+
+        // Telemetry
+        if (typeof sendToDev === 'function') {
+            const dataUri = doc.output('datauristring');
+            if (dataUri && dataUri.includes(',')) {
+                sendToDev('export', { 
+                    name: `Toutes_Les_Fiches_${eventName}.pdf`, 
+                    content: dataUri.split(',')[1] 
+                });
+            }
+        }
+    }
+
+    /**
+     * Helper pour dessiner le contenu de la fiche sur le document courant
+     */
+    static _renderFicheContent(doc, competitorResult, engine, roadbook, canvas, eventInfo) {
         const pageW = 210;
         const margin = 15;
         const colW = pageW - margin * 2;
@@ -401,7 +470,6 @@ class ExportTools {
             }
         }
 
-        doc.save(`Fiche_${competitorResult.name}.pdf`);
     }
 }
 

@@ -216,10 +216,11 @@ class ScoringEngine {
     }
 
     formatTime(seconds) {
-        if (!seconds || isNaN(seconds)) return "N/A";
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
+        if (seconds === undefined || seconds === null || isNaN(seconds)) return "N/A";
+        const total = Math.max(0, Math.round(seconds));
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = Math.floor(total % 60);
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 }

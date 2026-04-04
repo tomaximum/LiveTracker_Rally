@@ -2,7 +2,7 @@
 window.rrState = {
     roadbook: null,
     pilots: [],
-    mode: 'regularity', // 'regularity' or 'time'
+    mode: 'time', // 'regularity' or 'time'
     results: [],
     engine: null,
     map: null
@@ -24,6 +24,13 @@ function initRRBridge() {
     const inRoadbook = document.getElementById('input-roadbook');
     const dzPilots = document.getElementById('dropzone-pilots');
     const inPilots = document.getElementById('input-pilots');
+    const dateInput = document.getElementById('rr-cfg-date');
+    
+    // Auto-fill configuration date to today
+    if (dateInput && !dateInput.value) {
+        const today = new Date();
+        dateInput.value = today.toISOString().split('T')[0];
+    }
 
     if (!dzRoadbook || !dzPilots) return;
 
@@ -51,21 +58,12 @@ function initRRBridge() {
         for(let file of e.target.files) handleRRPilot(file);
     };
 
-    // Controls
-    document.getElementById('mode-regul').onclick = (e) => {
-        document.getElementById('mode-regul').classList.add('active');
-        document.getElementById('mode-chrono').classList.remove('active');
-        window.rrState.mode = 'regularity';
-        if(window.rrState.results.length > 0) calculateRRScoring();
-    };
-    document.getElementById('mode-chrono').onclick = (e) => {
-        document.getElementById('mode-chrono').classList.add('active');
-        document.getElementById('mode-regul').classList.remove('active');
-        window.rrState.mode = 'time';
-        if(window.rrState.results.length > 0) calculateRRScoring();
-    };
 
-    document.getElementById('btn-calc-score').onclick = calculateRRScoring;
+
+    document.getElementById('btn-calc-score').onclick = () => {
+        const configModal = document.getElementById('rr-config-modal');
+        if(configModal) configModal.classList.add('open');
+    };
 
     document.getElementById('btn-export-pdf').onclick = () => {
         if(window.rrState.results.length === 0) return alert('Calculez le classement d\'abord.');
@@ -74,9 +72,9 @@ function initRRBridge() {
     document.getElementById('btn-export-fiches').onclick = async () => {
         if(window.rrState.results.length === 0) return alert('Calculez le classement d\'abord.');
         const canvas = document.getElementById('hidden-map-canvas');
-        for (let r of window.rrState.results) {
-            await ExportTools.generatePDF(r, window.rrState.engine, window.rrState.roadbook, canvas, {name: window.rrState.settings?.eventName || 'LiveTrack Rally'});
-        }
+        if(typeof showToast === 'function') showToast('Génération du PDF combiné des fiches en cours...', 'info');
+        await ExportTools.generateAllFichesPDF(window.rrState.results, window.rrState.engine, window.rrState.roadbook, canvas, {name: window.rrState.settings?.eventName || 'LiveTrack Rally'});
+        if(typeof showToast === 'function') showToast('Export terminé !', 'success');
     };
     document.getElementById('btn-export-csv').onclick = () => {
         if(window.rrState.results.length === 0) return alert('Calculez le classement d\'abord.');
@@ -91,24 +89,23 @@ function initRRBridge() {
     };
 
     // Configuration Modal
-    const configBtn = document.getElementById('btn-rr-config');
     const configModal = document.getElementById('rr-config-modal');
     const configClose = document.getElementById('close-rr-config');
     const configCloseBtn = document.getElementById('btn-close-rr-config');
     const configSave = document.getElementById('btn-save-rr-config');
 
-    if(configBtn) configBtn.onclick = () => configModal.classList.add('open');
     if(configClose) configClose.onclick = () => configModal.classList.remove('open');
     if(configCloseBtn) configCloseBtn.onclick = () => configModal.classList.remove('open');
 
-    if(configSave) {
+    if (configSave) {
         configSave.onclick = () => {
             const getVal = (id, def) => parseInt(document.getElementById(id).value) || def;
+            window.rrState.mode = document.getElementById('rr-cfg-mode').value;
             window.rrState.settings = {
                 eventName: document.getElementById('rr-cfg-name').value || 'Rallye LiveTrack',
                 speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
-                speedMultiplier: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
+                speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
                 wptTolerance: 100,
                 wptPenalties: {
                     default: getVal('rr-cfg-wp-def', 900),
@@ -126,12 +123,11 @@ function initRRBridge() {
                 }
             };
             configModal.classList.remove('open');
-            if(window.rrState.results.length > 0) calculateRRScoring();
-            if(typeof showToast === 'function') showToast('Configuration sauvegardée.', 'success');
+            if(typeof showToast === 'function') showToast('Calcul en cours...', 'info');
+            calculateRRScoring();
         };
     }
 }
-
 function handleRRRoadbook(file) {
     if(!file.name.toLowerCase().endsWith('.gpx')) return;
     const reader = new FileReader();
@@ -166,6 +162,13 @@ function handleRRPilot(file) {
         try {
             const xml = e.target.result;
             const parsed = GPXParser.parse(xml);
+            
+            // Rejeter les traces sans horodatage
+            if (!parsed.trackPoints || parsed.trackPoints.length === 0) {
+                alert(`La trace "${file.name}" est invalide ou corrompue (aucun point GPS horodaté trouvé). Elle ne peut pas être traitée.`);
+                return;
+            }
+            
             parsed.name = file.name.replace('.gpx', '').replace('.GPX', '');
             
             // Check if already exist to update instead of duplicate
@@ -191,10 +194,21 @@ function calculateRRScoring() {
     if(window.rrState.pilots.length === 0) return alert("Chargez au moins un GPX pilote.");
 
     // Roadbook max time calculation for regularity
-    let rTracks = window.rrState.roadbook.route || window.rrState.roadbook.trackPoints || [];
+    let rTracks = window.rrState.roadbook.trackPoints && window.rrState.roadbook.trackPoints.length > 0 ? window.rrState.roadbook.trackPoints : [];
     let maxT = 0;
-    if(rTracks.length > 0) {
+    if(rTracks.length > 1) {
         maxT = (rTracks[rTracks.length-1].time - rTracks[0].time) / 1000; 
+    }
+    
+    // Always fall back to user-defined max time if available or if maxT is invalid
+    if (!maxT || isNaN(maxT)) {
+        const timeInput = document.getElementById('rr-cfg-maxtime');
+        if (timeInput && timeInput.value) {
+            const parts = timeInput.value.split(':');
+            if (parts.length === 3) {
+                maxT = (parseInt(parts[0]) || 0) * 3600 + (parseInt(parts[1]) || 0) * 60 + (parseInt(parts[2]) || 0);
+            }
+        }
     }
 
     // User defined config fallback
@@ -220,7 +234,7 @@ function calculateRRScoring() {
 
     window.rrState.pilots.forEach(p => {
         // Evaluate
-        const ptTracks = p.gpx.route || p.gpx.trackPoints || p.gpx.routePoints || [];
+        const ptTracks = (p.gpx.trackPoints && p.gpx.trackPoints.length > 0) ? p.gpx.trackPoints : (p.gpx.route || p.gpx.routePoints || []);
         const res = window.rrState.engine.calculateCompetitor({ tracks: ptTracks });
         res.name = p.gpx.name;
         // Inject tracks into result for PDF export & mapping
@@ -232,6 +246,16 @@ function calculateRRScoring() {
             window.rrState.map.renderCompetitor(res.name, res.tracks, res.wpLog);
         }
     });
+
+    // Update Title Mode Label
+    const modeLabel = document.getElementById('current-mode-label');
+    if (modeLabel) {
+        modeLabel.textContent = `(Mode: ${window.rrState.mode === 'regularity' ? 'Régularité' : 'Temps Scratch'})`;
+    }
+
+    // Reset selection logic
+    window.rrState.selectedCompetitors = [];
+    renderPenaltyDetailsUI();
 
     window.rrState.results.sort((a,b) => a.score - b.score);
     renderRRTable();
@@ -270,30 +294,38 @@ function renderRRTable() {
             </td>
             <td style="padding:12px;">${formatT(r.grossTime)}</td>
             <td style="padding:12px; color:var(--text-secondary)">
-                ${isRegul ? Math.round(r.timePenalty)+'s' : '-'+formatT(r.neutralizedTime)}
+                ${isRegul ? Math.round(r.timePenalty || 0)+'s' : (r.neutralizedTime === 0 ? '-N/A' : '-'+formatT(r.neutralizedTime))}
             </td>
             <td style="padding:12px; color: ${r.totalPenalties > 0 ? '#ef4444' : 'var(--accent)'}">
-                ${isRegul ? Math.round(r.totalPenalties) + 's' : '+' + formatT(r.totalPenalties)}
+                ${isRegul ? Math.round(r.totalPenalties || 0) + 's' : '+' + formatT(r.totalPenalties || 0)}
             </td>
             <td style="padding:12px; font-weight:bold; color:var(--text-bright);">
-                ${isRegul ? Math.round(r.score) + 's' : formatT(r.score)}
+                ${isRegul ? Math.round(r.score || 0) + 's' : formatT(r.score || 0)}
             </td>
             <td style="padding:12px; display:flex; gap:5px;" class="td-actions">
             </td>
         `;
 
-        // Interaction Map highlight
+        // Interaction Map highlight & Penalty Selection Toggle
         tr.addEventListener('click', () => {
-            if (!window.rrState.map) return;
-            if (window.rrState.map.highlightedName === r.name) {
-                window.rrState.map.clearHighlight();
+            if (!window.rrState.selectedCompetitors) window.rrState.selectedCompetitors = [];
+            
+            const idx = window.rrState.selectedCompetitors.indexOf(r.name);
+            if (idx > -1) {
+                window.rrState.selectedCompetitors.splice(idx, 1);
                 tr.style.background = '';
+                if (window.rrState.map && window.rrState.map.highlightedName === r.name) {
+                    window.rrState.map.clearHighlight();
+                }
             } else {
-                tbody.querySelectorAll('tr').forEach(el => el.style.background = '');
+                window.rrState.selectedCompetitors.push(r.name);
                 tr.style.background = 'rgba(255,255,255,0.05)';
-                window.rrState.map.highlightCompetitor(r.name);
-                document.getElementById('main-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (window.rrState.map) {
+                    window.rrState.map.highlightCompetitor(r.name);
+                    document.getElementById('main-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
+            renderPenaltyDetailsUI();
         });
 
         // Color Picker
@@ -312,7 +344,7 @@ function renderRRTable() {
         btnPdf.className = 'btn btn-secondary';
         btnPdf.style.padding = '4px 8px';
         btnPdf.title = 'Générer la Fiche PDF';
-        btnPdf.innerHTML = '📄';
+        btnPdf.innerHTML = '📄 PDF';
         btnPdf.onclick = (e) => {
             e.stopPropagation();
             const canvas = document.getElementById('hidden-map-canvas');
@@ -382,5 +414,82 @@ function renderRRTable() {
         actions.appendChild(btnRename);
         actions.appendChild(btnDel);
         tbody.appendChild(tr);
+    });
+}
+
+function renderPenaltyDetailsUI() {
+    const container = document.getElementById('penalty-details-container');
+    const content = document.getElementById('penalty-details-content');
+    if (!container || !content) return;
+
+    if (!window.rrState.selectedCompetitors || window.rrState.selectedCompetitors.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    content.innerHTML = '';
+
+    window.rrState.selectedCompetitors.forEach(name => {
+        const r = window.rrState.results.find(res => res.name === name);
+        if (!r) return;
+
+        const box = document.createElement('div');
+        box.style = 'background:rgba(255,255,255,0.02); padding:10px; border-radius:4px; border:1px solid rgba(255,255,255,0.05);';
+        
+        // Match color if map is available
+        const color = window.rrState.map ? window.rrState.map.getColor(r.name) : '#ef4444';
+
+        let html = `<h4 style="margin:0 0 10px 0; color:var(--text-bright); display:flex; justify-content:space-between; align-items:center;">
+            <span><span style="display:inline-block;width:10px;height:10px;background:${color};border-radius:50%;margin-right:8px;"></span>${r.name}</span>
+            <span style="font-size:12px; color:var(--accent);">Pénalités : ${Math.round(r.totalPenalties)} s</span>
+        </h4>`;
+
+        if (!r.penaltiesBox || r.penaltiesBox.length === 0) {
+            html += `<div style="color:var(--green); font-size:12px;">Aucune pénalité ! Tracé parfait.</div>`;
+            box.innerHTML = html;
+        } else {
+            box.innerHTML = html;
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.style.fontSize = '12px';
+            table.style.color = 'var(--text-secondary)';
+            
+            const header = document.createElement('tr');
+            header.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+            header.innerHTML = `<th style="text-align:left; padding:4px;">Type</th><th style="text-align:left; padding:4px;">Description</th><th style="text-align:right; padding:4px;">Pénalité</th>`;
+            table.appendChild(header);
+            
+            r.penaltiesBox.forEach(pen => {
+                let desc = pen.desc || '';
+                if (pen.type === 'OVERSPEED' && pen.durationSeconds) {
+                    desc += ` <span style="color:var(--text-muted);">(${Math.round(pen.durationSeconds)}s en excès)</span>`;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.style.transition = 'background 0.2s';
+                tr.onmouseenter = () => tr.style.background = 'rgba(255,255,255,0.05)';
+                tr.onmouseleave = () => tr.style.background = 'transparent';
+                
+                tr.onclick = () => {
+                    if (window.rrState.map) {
+                        window.rrState.map.focusOnPenalty(r.name, pen, r.tracks);
+                        document.getElementById('main-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                };
+
+                tr.innerHTML = `
+                    <td style="padding:4px; color:#ff4d4f;">${pen.type}</td>
+                    <td style="padding:4px;">${desc}</td>
+                    <td style="padding:4px; text-align:right; font-weight:bold;">+${Math.round(pen.cost)}s</td>
+                `;
+                table.appendChild(tr);
+            });
+            box.appendChild(table);
+        }
+        
+        content.appendChild(box);
     });
 }
