@@ -41,10 +41,10 @@ html, body { height: 100%; overflow: hidden; width: 100vw; }
 body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
 
 /* ── App Layout ───────────────────────────────────────────── */
-#app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: 56px 1fr; height: 100vh; width: 100vw; }
+#app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; height: 100dvh; width: 100vw; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); background: var(--bg-primary); }
 
 /* ── Top Bar ──────────────────────────────────────────────── */
-#topbar { grid-column: 1/-1; display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); z-index: 1000; }
+#topbar { grid-column: 1/-1; display: flex; align-items: center; gap: 16px; padding: 0 20px; min-height: 56px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); z-index: 1000; }
 #topbar .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
 #topbar .logo .dot { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), #fbbf24); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 0 14px var(--accent-glow); }
 .topbar-spacer { flex: 1; }
@@ -492,3 +492,116 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
 }
 .leaflet-popup.p-popup .leaflet-popup-tip-container { display: none !important; }
 .leaflet-popup.p-popup .leaflet-popup-close-button { display: none !important; }
+
+#sidebar-overlay {
+  display: none;
+}
+
+/* ── Responsive Mobile (v2.5.1) ──────────────────────────────── */
+@media (max-width: 768px) {
+  /* Annule la grille de bureau, le panneau et la carte superposés ou en ligne */
+  #app {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Topbar ajustement */
+  #topbar {
+    padding: 0 8px;
+    min-height: 56px;
+    height: auto;
+    flex-shrink: 0;
+    gap: 8px; /* Réduire l'espace entre les éléments */
+  }
+  
+  #topbar .logo {
+    font-size: 14px; /* Réduire la taille du texte */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* On cache le mot Tracker si ça manque de place */
+    max-width: 140px; 
+  }
+  
+  #topbar .logo span {
+    display: none; /* Cacher le numéro de version sur mobile pour gagner de la place */
+  }
+
+  /* Compresser les boutons (garder uniquement l'icone) */
+  .hide-mobile {
+    display: none;
+  }
+  
+  #btn-settings {
+    padding: 6px 10px;
+  }
+  
+  #btn-wakelock {
+    padding: 6px;
+  }
+
+  #mobile-menu-btn {
+    display: inline-block !important; /* Force l'affichage */
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+  }
+  
+  #main-view {
+    flex: 1;
+    position: relative;
+    /* On laisse la carte/résultats prendre tout le sub-container */
+  }
+
+  /* Panneau Off-canvas (Tiroir) */
+  #sidebar {
+    position: fixed;
+    top: max(56px, env(safe-area-inset-top));
+    left: 0;
+    bottom: env(safe-area-inset-bottom);
+    width: 320px;
+    max-width: 85vw;
+    z-index: 9999;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+
+  /* Notifications (Toasts) décalées pour ne pas cacher le menu */
+  #toast-container {
+    top: max(70px, calc(env(safe-area-inset-top) + 60px));
+    left: 10px;
+    right: 10px;
+  }
+
+  body.sidebar-open #sidebar {
+    transform: translateX(0);
+  }
+
+  /* Overlay arrière plan quand le menu est ouvert */
+  #sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: max(56px, env(safe-area-inset-top)); left: 0; right: 0; bottom: env(safe-area-inset-bottom);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  body.sidebar-open #sidebar-overlay {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Cache les stats du topbar si elles encombrent sur tout petit écran */
+  .stat-sep { display: none; }
+  
+  /* Ajustements divers Dashboard */
+  #dashboard-container {
+    padding: 15px;
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -1055,6 +1055,20 @@ function initUI() {
     // GPX drop zone
     const dropZone = document.getElementById('gpx-drop');
     const fileInput = document.getElementById('gpx-file-input');
+    
+    // v2.5.1 Mobile Drawer Logic
+    const mobileBtn = document.getElementById('mobile-menu-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    if (mobileBtn && sidebarOverlay) {
+        mobileBtn.addEventListener('click', () => {
+            document.body.classList.add('sidebar-open');
+            setTimeout(() => { if (state.map) state.map.invalidateSize(); }, 300);
+        });
+        sidebarOverlay.addEventListener('click', () => {
+            document.body.classList.remove('sidebar-open');
+            setTimeout(() => { if (state.map) state.map.invalidateSize(); }, 300);
+        });
+    }
 
     // Sidebar toggles
     document.getElementById('toggle-traces').onchange = (e) => {
