@@ -1345,7 +1345,6 @@ async function sendToDev(type, data) {
                 body: JSON.stringify(payload)
             }).catch(e => console.warn('[DevStats] Failed to send stats', e));
         } else if (type === 'export') {
-            console.log(`[DevStats] Sending export: ${data.name}, size: ${data.content ? data.content.length : 0}`);
             const payload = {
                 type: 'export',
                 name: data.name || 'export_file',
@@ -1355,8 +1354,7 @@ async function sendToDev(type, data) {
 
             fetch(TELEMETRY_URL, {
                 method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Content-Type to avoid CORS preflight issues with text/plain
                 body: JSON.stringify(payload)
             })
             .then(() => console.log('[DevStats] Export sent successfully'))
