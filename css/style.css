@@ -563,6 +563,13 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
     box-shadow: 4px 0 24px rgba(0,0,0,0.5);
   }
 
+  /* Notifications (Toasts) décalées pour ne pas cacher le menu */
+  #toast-container {
+    top: max(70px, calc(env(safe-area-inset-top) + 60px));
+    left: 10px;
+    right: 10px;
+  }
+
   body.sidebar-open #sidebar {
     transform: translateX(0);
   }
