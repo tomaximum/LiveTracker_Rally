@@ -1,15 +1,23 @@
-const CACHE_NAME = 'livetiming-v2.0.9-test-fix';
+const CACHE_NAME = 'livetiming-v2.5.0';
 const ASSETS = [
   './',
-  'index.html?v=2.0.9',
-  'css/style.css?v=2.0.9',
-  'js/app.js?v=2.0.9',
-  'js/geo.js?v=2.0.9',
-  'js/gpx.js?v=2.0.9',
-  'js/alerts.js?v=2.0.9',
-  'js/wizard.js?v=2.0.9',
-  'js/scoring.js?v=2.0.9',
-  'js/parser.js?v=2.0.9',
+  'index.html',
+  'css/style.css',
+  'js/app.js',
+  'js/geo.js',
+  'js/gpx.js',
+  'js/alerts.js',
+  'js/wizard.js',
+  'js/scoring.js',
+  'js/parser.js',
+  'js/map.js',
+  'js/mapCanvas.js',
+  'js/rallyranking_bridge.js',
+  'js/export.js',
+  'js/simulation.js',
+  'js/storage.js',
+  'js/telegram-client.js',
+  'favicon.png',
   'icons/icon-512.png'
 ];
 
