@@ -1,4 +1,18 @@
 class GPXParser {
+  static getAllElements(xml, nodeName) {
+      // First try normal tag name
+      let nodes = Array.from(xml.getElementsByTagName(nodeName));
+      if (nodes.length === 0) {
+          // If strict namespacing is used, search ignoring namespace prefix
+          nodes = Array.from(xml.getElementsByTagNameNS("*", nodeName));
+          if (nodes.length === 0) {
+              const all = Array.from(xml.getElementsByTagName("*"));
+              nodes = all.filter(el => el.nodeName.toLowerCase().endsWith(nodeName) || el.localName === nodeName);
+          }
+      }
+      return nodes;
+  }
+
   /**
    * Parse a GPX string and returns tracks and waypoints
    * @param {string} gpxString 
@@ -18,16 +32,17 @@ class GPXParser {
       const routePoints = this.extractRoutePoints(xml);   // Sans timestamp (roadbook)
       const waypoints = this.extractWaypoints(xml);
 
-      return { trackPoints, routePoints, waypoints };
+      return { trackPoints, routePoints, waypoints, route: routePoints };
   }
 
   // Points avec timestamp obligatoire — pour le calcul des concurrents
   static extractTrackPoints(xml) {
-      const trkpts = Array.from(xml.getElementsByTagName('trkpt'));
+      const trkpts = this.getAllElements(xml, 'trkpt');
       return trkpts.map((pt, index) => {
           const lat = parseFloat(pt.getAttribute('lat'));
           const lon = parseFloat(pt.getAttribute('lon'));
-          const timeNode = pt.getElementsByTagName('time')[0];
+          const timeNodes = this.getAllElements(pt, 'time');
+          const timeNode = timeNodes[0];
           let time = null;
           if (timeNode && timeNode.textContent) {
               time = new Date(timeNode.textContent).getTime();
@@ -39,8 +54,8 @@ class GPXParser {
   // Tous les points de trace — pour l'affichage du roadbook ou de la trace sur la carte (pas de temps requis)
   static extractRoutePoints(xml) {
       // Tenter de récupérer trkpt (tracks) OU rtept (routes)
-      const trkpts = Array.from(xml.getElementsByTagName('trkpt'));
-      const rtepts = Array.from(xml.getElementsByTagName('rtept'));
+      const trkpts = this.getAllElements(xml, 'trkpt');
+      const rtepts = this.getAllElements(xml, 'rtept');
       const allPts = trkpts.length >= rtepts.length ? trkpts : rtepts;
       
       return allPts.map((pt, index) => {
