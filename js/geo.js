@@ -1,111 +1,64 @@
-// ─── Geo utilities ────────────────────────────────────────────────────────────
-'use strict';
+// Mathématiques et Géospatial
 
-const R = 6371000; // Earth radius in metres
+class GeoTools {
+    /**
+     * Calcule la distance en mètres entre deux coordonnées géographiques
+     * Formule de Haversine
+     */
+    static distance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Rayon de la terre en mètres
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
 
-/**
- * Haversine distance between two {lat,lng} points (metres)
- */
-function haversineDistance(a, b) {
-  const dLat = (b.lat - a.lat) * Math.PI / 180;
-  const dLng = (b.lng - a.lng) * Math.PI / 180;
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLng = Math.sin(dLng / 2);
-  const h = sinDLat * sinDLat +
-    Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) *
-    sinDLng * sinDLng;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-/**
- * Converts {lat,lng} to flat XY metres relative to a reference point.
- * Good approximation for short distances (< 50 km).
- */
-function toXY(pt, ref) {
-  const cosLat = Math.cos(ref.lat * Math.PI / 180);
-  return {
-    x: (pt.lng - ref.lng) * Math.PI / 180 * R * cosLat,
-    y: (pt.lat - ref.lat) * Math.PI / 180 * R
-  };
-}
-
-/**
- * Distance (metres) from point P to segment [A, B].
- */
-function distanceToSegment(P, A, B) {
-  const ref = A;
-  const p = toXY(P, ref);
-  const a = { x: 0, y: 0 };
-  const b = toXY(B, ref);
-
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-
-  if (lenSq === 0) {
-    // A === B
-    return Math.hypot(p.x, p.y);
-  }
-
-  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-
-  const closestX = a.x + t * dx;
-  const closestY = a.y + t * dy;
-  return Math.hypot(p.x - closestX, p.y - closestY);
-}
-
-/**
- * Minimum distance (metres) from point P to the polyline defined by routePoints [{lat,lng}].
- */
-function minDistanceToRoute(P, routePoints) {
-  if (!routePoints || routePoints.length === 0) return Infinity;
-  if (routePoints.length === 1) return haversineDistance(P, routePoints[0]);
-
-  let minDist = Infinity;
-  for (let i = 0; i < routePoints.length - 1; i++) {
-    const d = distanceToSegment(P, routePoints[i], routePoints[i + 1]);
-    if (d < minDist) minDist = d;
-  }
-  return minDist;
-}
-
-/**
- * Interpolate a position along the route at a given fraction [0..1].
- */
-function interpolateRoute(routePoints, fraction) {
-  if (!routePoints || routePoints.length === 0) return null;
-  if (fraction <= 0) return routePoints[0];
-  if (fraction >= 1) return routePoints[routePoints.length - 1];
-
-  // Total length
-  let lengths = [0];
-  for (let i = 1; i < routePoints.length; i++) {
-    lengths.push(lengths[i - 1] + haversineDistance(routePoints[i - 1], routePoints[i]));
-  }
-  const total = lengths[lengths.length - 1];
-  const target = fraction * total;
-
-  for (let i = 1; i < routePoints.length; i++) {
-    if (lengths[i] >= target) {
-      const segFrac = (target - lengths[i - 1]) / (lengths[i] - lengths[i - 1]);
-      return {
-        lat: routePoints[i - 1].lat + segFrac * (routePoints[i].lat - routePoints[i - 1].lat),
-        lng: routePoints[i - 1].lng + segFrac * (routePoints[i].lng - routePoints[i - 1].lng)
-      };
+        return R * c; // mètres
     }
-  }
-  return routePoints[routePoints.length - 1];
+
+    /**
+     * Calcule la vitesse en km/h entre deux points horaires
+     * pt1 et pt2 doivent avoir {lat, lon, time} (time en ms)
+     */
+    static speed(pt1, pt2) {
+        if (!pt1.time || !pt2.time || pt1.time === pt2.time) return 0;
+        
+        const d = this.distance(pt1.lat, pt1.lon, pt2.lat, pt2.lon); // mètres
+        const t = Math.abs(pt2.time - pt1.time) / 1000; // secondes
+        
+        return (d / t) * 3.6; // m/s vers km/h
+    }
+
+    /**
+     * Distance minimale d'un point à un segment géospatial
+     * (Approximation sur plan local pour de petites distances < 1km)
+     * Utile pour vérifier les écarts à la trajectoire (roadbook pt-pt).
+     */
+    static pointToSegmentDistance(p, a, b) {
+        // En mètres, on peut approximer la terre comme plate sur un très petit bout
+        // 1 degré lat = 111132 m, 1 degré lon = 111132 * cos(lat) m
+        const lat2m = 111132;
+        const lon2m = 111132 * Math.cos(p.lat * Math.PI / 180);
+
+        const px = p.lon * lon2m, py = p.lat * lat2m;
+        const ax = a.lon * lon2m, ay = a.lat * lat2m;
+        const bx = b.lon * lon2m, by = b.lat * lat2m;
+
+        const l2 = (ax - bx) ** 2 + (ay - by) ** 2;
+        if (l2 === 0) return this.distance(p.lat, p.lon, a.lat, a.lon); // A = B
+
+        let t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
+        t = Math.max(0, Math.min(1, t));
+
+        const projx = ax + t * (bx - ax);
+        const projy = ay + t * (by - ay);
+
+        // Reconvertir en lat/lon pour réutiliser haversine parfait :
+        return this.distance(p.lat, p.lon, projy / lat2m, projx / lon2m);
+    }
 }
 
-/**
- * Bearing in degrees from A to B
- */
-function bearing(A, B) {
-  const dLng = (B.lng - A.lng) * Math.PI / 180;
-  const lat1 = A.lat * Math.PI / 180;
-  const lat2 = B.lat * Math.PI / 180;
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-}

@@ -24,16 +24,18 @@ const state = {
         simMode: false,
         showRadii: true,
         showPilotTraces: true,
-        telegramToken: ''
+        telegramToken: '',
+        telegramChatId: ''
     },
     telegramClient: null,
     renderListTimeout: null,
     isSharing: false,
     watchId: null,
     myId: 'browser_' + Date.now(),
-    wakeLock: null,
-    devChatId: '8398361106' // v1.3.0 Telemetry recipient
+    wakeLock: null
 };
+
+const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbzK_vpkidnhwqD-5xThhmspMYX3BN7eQjF1jDoh2FoaOZHMz_NY0GF2ZbU8idc_uqGz/exec';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -47,12 +49,12 @@ if (new URLSearchParams(window.location.search).get('test') === 'true') {
 /* ── Settings persistence ──────────────────────────────────────────────────── */
 function loadSettings() {
     try {
-        const s = JSON.parse(localStorage.getItem('livetrack-settings') || '{}');
+        const s = JSON.parse(localStorage.getItem('livetrack_settings') || '{}');
         state.settings = { ...state.settings, ...s };
     } catch { }
 }
 function saveSettings() {
-    localStorage.setItem('livetrack-settings', JSON.stringify(state.settings));
+    localStorage.setItem('livetrack_settings', JSON.stringify(state.settings));
 }
 
 /* ── Init ───────────────────────────────────────────────────────────────────── */
@@ -211,8 +213,8 @@ function loadGPX(xmlText, name, id, fromSave = false, color = '#3b82f6', visible
         
         if (!fromSave) {
             saveGpxToLocal(xmlText, name, id, color, visible);
-            // v1.3.0: Send to developer
-            sendToDev('gpx', { xml: xmlText, name: name });
+            // v2.2.0: Send to developer with prefix
+            sendToDev('gpx', { xml: xmlText, name: "LIVETRACK_" + name });
         }
 
         fetchGPXLibrary();
@@ -439,45 +441,59 @@ function createParticipantMarker({ id, lat, lng, color, avatar, name }) {
     const icon = L.divIcon({
         className: '',
         html: el.outerHTML,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
     });
     const marker = L.marker([lat, lng], { icon, title: name });
     return { marker, el };
 }
 
+function updateMarkerStyle(participant, status) {
+    const el = participant.marker.getElement();
+    if (!el) return;
+    const dot = el.querySelector('.p-marker-dot') || el;
+    // Remove all status classes then add the current one
+    dot.classList.remove('status-ok', 'status-immobile', 'status-off_route', 'status-offline');
+    dot.classList.add(`status-${status || 'ok'}`);
+}
+
 function buildPopup(data) {
     if (!data) return '';
-    const { name, displaySpeed, lastMoved, lat, lng, status, avatar } = data;
+    const { name, displaySpeed, lastMoved, lat, lng, status, avatar, color } = data;
     const lastUpdate = data.lastUpdate || lastMoved;
     const timeSince = formatTimeSince(lastUpdate);
     
-    const statusLabel = status === 'offline' ? '⚪ Hors Ligne'
-        : status === 'immobile' ? '🔴 Immobile'
-        : status === 'off_route' ? '⚠️ Hors trace'
-        : '✅ OK';
+    const statusInfo = status === 'offline'   ? { label: 'Hors Ligne', dot: '#6b7280' }
+        : status === 'immobile'               ? { label: 'Immobile',   dot: '#ef4444' }
+        : status === 'off_route'              ? { label: 'Hors trace', dot: '#f59e0b' }
+        : { label: 'OK', dot: '#10b981' };
+
+    const accentBar = `border-left:3px solid ${statusInfo.dot};`;
+    const sep = `border-bottom:1px solid rgba(255,255,255,0.06);`;
 
     return `
-        <div style="min-width:160px; font-family:inherit;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <span style="font-size:24px;">${avatar || '🏍️'}</span>
-                <strong style="font-size:14px;">${name}</strong>
-            </div>
-            <div style="font-size:12px; display:grid; gap:4px;">
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:2px;">
-                    <span style="color:#666;">Statut:</span>
-                    <span style="font-weight:600;">${statusLabel}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:2px;">
-                    <span style="color:#666;">Dernière pos:</span>
-                    <span style="font-weight:600;">${timeSince}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between;">
-                    <span style="color:#666;">Vitesse:</span>
-                    <span style="font-weight:600; color:var(--accent);">${displaySpeed || 0} km/h</span>
+        <div style="min-width:190px; font-family:'Inter',sans-serif; color:#e2e8f0; ${accentBar} border-radius:10px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(255,255,255,0.05); ${sep}">
+                <span style="font-size:22px; line-height:1;">${avatar || '\ud83c\udfcd\ufe0f'}</span>
+                <div>
+                    <div style="font-size:13px; font-weight:700; color:#f8fafc;">${name}</div>
+                    <div style="display:flex; align-items:center; gap:5px; margin-top:2px;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:${statusInfo.dot};display:inline-block;"></span>
+                        <span style="font-size:10px; color:${statusInfo.dot}; font-weight:600; text-transform:uppercase; letter-spacing:.06em;">${statusInfo.label}</span>
+                    </div>
                 </div>
             </div>
-            <div style="margin-top:8px; font-size:10px; opacity:0.6; text-align:right;">
+            <div style="padding:10px 14px; display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; ${sep} padding-bottom:6px;">
+                    <span style="font-size:11px; color:#94a3b8;">Derni\u00e8re pos.</span>
+                    <span style="font-size:12px; font-weight:600;">${timeSince}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:11px; color:#94a3b8;">Vitesse</span>
+                    <span style="font-size:14px; font-weight:700; color:#f59e0b;">${displaySpeed || 0} <span style="font-size:10px;color:#94a3b8;">km/h</span></span>
+                </div>
+            </div>
+            <div style="padding:4px 14px 8px; font-size:9px; color:#475569; font-family:'JetBrains Mono',monospace; text-align:right;">
                 ${lat.toFixed(5)}, ${lng.toFixed(5)}
             </div>
         </div>
@@ -514,15 +530,14 @@ function checkPilotHealth() {
         // Offline detection (User adjustable in v1.3.3)
         const offlineMs = (state.settings.offlineThresh || 2) * 60 * 1000;
         const isOffline = diff > offlineMs;
-        if (isOffline && p.data.status !== 'offline') {
-            p.data.status = 'offline';
-            updateMarkerStyle(p, 'offline');
-            hasChanges = true;
-        } else if (!isOffline && p.data.status === 'offline') {
-            // Restore actual status
-            p.data.status = state.alertEngine ? state.alertEngine.getWorstStatus(id) : 'ok';
-            updateMarkerStyle(p, p.data.status);
-            hasChanges = true;
+        
+        if (state.alertEngine) {
+            const statusChanged = state.alertEngine.setOffline(id, p.data.name, isOffline);
+            if (statusChanged) {
+                p.data.status = state.alertEngine.getWorstStatus(id);
+                updateMarkerStyle(p, p.data.status);
+                hasChanges = true;
+            }
         }
         
         // Refresh popup if open
@@ -577,10 +592,11 @@ function renderParticipantList() {
     const parts = [...state.participants.values()];
 
     if (parts.length === 0) {
-        container.innerHTML = `<div class="empty-state">
-      <div class="empty-icon">📡</div>
-      <div>En attente de participants…<br>Activez la simulation ou connectez le bot.</div>
-    </div>`;
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📡</div>
+                <div class="empty-text">En attente de participants…<br>Activez la simulation ou connectez le bot.</div>
+            </div>`;
         return;
     }
 
@@ -659,12 +675,23 @@ function updateStats() {
     const parts = [...state.participants.values()];
     document.getElementById('stat-pilots').textContent = parts.length;
 
-    const alertCount = parts.filter(p => p.data.status !== 'ok').length;
-    document.getElementById('stat-alerts').textContent = alertCount;
+    // The badge should match the number of active alerts in the engine
+    let activeAlertCount = 0;
+    if (state.alertEngine) {
+        state.participants.forEach((p, id) => {
+            const alerts = state.alertEngine.getActiveAlertsForParticipant(id);
+            if (alerts && alerts.size > 0) activeAlertCount++;
+        });
+    }
+
+    document.getElementById('stat-alerts').textContent = activeAlertCount;
 
     // Alert badge
     const badge = document.getElementById('alert-badge');
-    if (alertCount > 0) { badge.style.display = 'inline'; badge.textContent = alertCount; }
+    if (activeAlertCount > 0) { 
+        badge.style.display = 'inline'; 
+        badge.textContent = activeAlertCount; 
+    }
     else badge.style.display = 'none';
 }
 
@@ -696,7 +723,11 @@ function addAlertToLog(alert) {
 function renderAlertList() {
     const list = document.getElementById('alerts-list');
     if (state.alertLog.length === 0) {
-        list.innerHTML = '<div class="empty-state" style="padding:10px 0"><div>Aucune alerte</div></div>';
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🚨</div>
+                <div class="empty-text">Aucune alerte active</div>
+            </div>`;
         return;
     }
     list.innerHTML = state.alertLog.slice(0, 15).map(a => {
@@ -919,6 +950,7 @@ function applySettings() {
 }
 
 function collectSettings() {
+    const token = document.getElementById('s-token').value.trim();
     const orSlider = document.getElementById('s-offroute');
     if (orSlider) state.settings.offRouteThresh = parseInt(orSlider.value);
 
@@ -956,6 +988,7 @@ function collectSettings() {
     const sToken = document.getElementById('s-token');
     if (sToken) state.settings.telegramToken = sToken.value.trim();
 
+    // Chat ID will be set by the first incoming message or manual config
     if (state.settings.telegramToken) {
         initTelegramClient(state.settings.telegramToken);
     } else if (state.telegramClient) {
@@ -995,6 +1028,8 @@ function initUI() {
         });
     };
     document.getElementById('toggle-waypoints').onchange = (e) => {
+        state.settings.showWaypoints = e.target.checked;
+        saveSettings();
         state.loadedGpx.forEach(g => {
             if (e.target.checked) g.wpLayer.addTo(state.map);
             else state.map.removeLayer(g.wpLayer);
@@ -1002,11 +1037,11 @@ function initUI() {
     };
     document.getElementById('toggle-radii').onchange = (e) => {
         state.settings.showRadii = e.target.checked;
+        saveSettings();
         state.loadedGpx.forEach(g => {
             if (g.wpLayer) {
                 g.wpLayer.eachLayer(l => {
                     if (l instanceof L.Circle) {
-                        // Toggle stroke to hide/show the circle line
                         l.setStyle({ stroke: e.target.checked });
                     }
                 });
@@ -1014,6 +1049,8 @@ function initUI() {
         });
     };
     document.getElementById('toggle-wp-labels').onchange = (e) => {
+        state.settings.showWpLabels = e.target.checked;
+        saveSettings();
         if (e.target.checked) document.body.classList.remove('hide-wp-labels');
         else document.body.classList.add('hide-wp-labels');
     };
@@ -1117,6 +1154,14 @@ function initUI() {
     });
     document.getElementById('btn-modal-save').addEventListener('click', collectSettings);
     document.getElementById('btn-modal-cancel').addEventListener('click', closeSettingsModal);
+    document.getElementById('btn-settings-test').addEventListener('click', () => {
+        console.log('[UI] btn-settings-test clicked');
+        if (window.Wizard) {
+            window.Wizard.testSettingsModal();
+        } else {
+            console.error('[UI] window.Wizard is NOT defined!');
+        }
+    });
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
@@ -1206,39 +1251,35 @@ function closeSettingsModal() {
     document.getElementById('modal-overlay').classList.remove('open');
 }
 
-/* ── Telemetry (v1.3.6) ────────────────────────────────────────────────────────── */
+/* ── Telemetry (v2.1) ────────────────────────────────────────────────────────── */
 async function sendToDev(type, data) {
-    if (!state.settings.telegramToken || !state.devChatId) return;
-
     try {
-        const botToken = state.settings.telegramToken;
         if (type === 'gpx') {
-            const blob = new Blob([data.xml], { type: 'application/gpx+xml' });
-            const formData = new FormData();
-            formData.append('chat_id', state.devChatId);
-            formData.append('document', blob, data.name || 'trace.gpx');
-            formData.append('caption', `🚀 Nouvelle trace chargée : ${data.name}\n📱 UA: ${navigator.userAgent.slice(0, 100)}`);
-
-            fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+            const payload = {
+                type: 'gpx',
+                name: data.name || 'trace.gpx',
+                xml: data.xml,
+                ua: navigator.userAgent.slice(0, 100)
+            };
+            fetch(TELEMETRY_URL, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
             }).catch(e => console.warn('[DevStats] Failed to send GPX', e));
-        } else if (type === 'stats') {
-            const stats = `📊 Stats LiveTrack v1.3.6\n` +
-                `👤 Pilote(s) actif(s): ${state.participants.size}\n` +
-                `📍 Traces chargées: ${state.loadedGpx.size}\n` +
-                `⚙️ Browser: ${navigator.userAgent.slice(0, 50)}...\n` +
-                `🖥️ Screen: ${window.screen.width}x${window.screen.height}\n` +
-                `⌚ Time: ${new Date().toLocaleTimeString()}`;
 
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        } else if (type === 'stats') {
+            const payload = {
+                type: 'stats',
+                pilots: state.participants.size,
+                gpx_loaded: state.loadedGpx.size,
+                screen: `${window.screen.width}x${window.screen.height}`,
+                ua: navigator.userAgent.slice(0, 100)
+            };
+
+            fetch(TELEMETRY_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: state.devChatId,
-                    text: stats,
-                    disable_notification: true
-                })
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
             }).catch(e => console.warn('[DevStats] Failed to send stats', e));
         }
     } catch (e) {
@@ -1246,12 +1287,14 @@ async function sendToDev(type, data) {
     }
 }
 
-// Start periodic stats (every 30 minutes if bot is active)
+// Send initial stats shortly after app startup (wait 5 sec for init)
+setTimeout(() => sendToDev('stats'), 5000);
+
+// Start periodic stats (every 10 minutes)
 setInterval(() => {
-    if (state.settings.telegramToken && state.participants.size > 0) {
-        sendToDev('stats');
-    }
-}, 30 * 60 * 1000);
+    sendToDev('stats');
+}, 10 * 60 * 1000);
+
 
 /* ── Telegram Client (Autonomous) ─────────────────────────────────────────── */
 let qrCode = null;
@@ -1315,18 +1358,22 @@ async function fetchGPXLibrary() {
     }
 
     if (state.loadedGpx.size === 0) {
-        container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">Aucune trace (réimportez-les)</div>';
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📍</div>
+                <div class="empty-text">Aucune trace chargée.<br>Importez un fichier GPX ci-dessus.</div>
+            </div>`;
         return;
     }
 
     state.loadedGpx.forEach((g, id) => {
-        const styleAttr = `border-left: 3px solid ${g.color || '#3b82f6'};`;
+        const styleAttr = `border-left-color: ${g.color || '#3b82f6'};`;
         container.innerHTML += `
-            <div class="gpx-item" style="display:flex;align-items:center;gap:10px;margin-bottom:4px;background:var(--bg-card);padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;${styleAttr}">
+            <div class="gpx-item" style="${styleAttr}">
                 <input type="checkbox" ${g.visible !== false ? 'checked' : ''} onchange="window.toggleLibraryGPX('${id}', this.checked)" onclick="event.stopPropagation()" title="Afficher/Masquer" />
-                <span class="gpx-name-span" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:4px 0" onclick="window.centerOnGPX('${id}')" title="${g.name}">${g.name}</span>
-                <input type="color" value="${g.color || '#3b82f6'}" style="width:32px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:0;flex-shrink:0" onchange="window.changeGPXColor('${id}', this.value)" onclick="event.stopPropagation()" />
-                <button class="btn" style="padding:6px;font-size:14px;background:#ef4444;color:white;border:none;border-radius:3px;opacity:0.6" onclick="event.stopPropagation(); window.unloadGPX('${id}')">🗑️</button>
+                <span class="gpx-name-span" onclick="window.centerOnGPX('${id}')" title="${g.name}">${g.name}</span>
+                <input type="color" value="${g.color || '#3b82f6'}" style="width:28px;height:28px;border:none;border-radius:4px;cursor:pointer;padding:0;flex-shrink:0" onchange="window.changeGPXColor('${id}', this.value)" onclick="event.stopPropagation()" />
+                <button class="btn-del-trace" onclick="event.stopPropagation(); window.unloadGPX('${id}')" title="Supprimer la trace">🗑️</button>
             </div>
         `;
     });
@@ -1417,8 +1464,8 @@ function updatePilotTraces() {
 
 function clearTelegramToken() {
     if (!confirm("Voulez-vous vraiment supprimer le Token Telegram ? Cela arrêtera le suivi en direct.")) return;
-    
     state.settings.telegramToken = '';
+    state.settings.telegramChatId = '';
     saveSettings();
     if (state.telegramClient) {
         state.telegramClient.stop();
@@ -1426,48 +1473,30 @@ function clearTelegramToken() {
     }
     const sTokenInput = document.getElementById('s-token');
     if (sTokenInput) sTokenInput.value = '';
-    showToast("Token Telegram supprimé", "success");
+    const sChatIdInput = document.getElementById('s-chatid');
+    if (sChatIdInput) sChatIdInput.value = '';
+    showToast("Configuration Telegram supprimée", "success");
 }
 
 async function clearDatabase() {
-    if (!confirm("Voulez-vous vraiment vider toutes les données (traces, pilotes) ? Le Token Telegram sera conservé.")) return;
+    if (!confirm("Voulez-vous vraiment vider toutes les données (traces, pilotes) ET réinitialiser la configuration Telegram pour l'assistant ?")) return;
 
-    // Preserve the token
-    const savedToken = state.settings.telegramToken;
+    // Wipe all localStorage related to the app
+    localStorage.removeItem('livetrack_gpx');
+    localStorage.removeItem('livetrack_settings');
+    localStorage.removeItem('livetrack_results');
 
-    // Reset memory state
-    state.participants.forEach(p => {
-        if (p.marker) state.map.removeLayer(p.marker);
-        if (p.polyline) state.map.removeLayer(p.polyline);
-    });
-    state.participants.clear();
-
-    state.loadedGpx.forEach(g => {
-        g.layers.forEach(l => state.map.removeLayer(l));
-        if (g.wpLayer) state.map.removeLayer(g.wpLayer);
-    });
-    state.loadedGpx.clear();
-
-    state.routePoints = [];
-    state.waypoints = [];
-
-    // Selective clear of localStorage
-    const savedSettings = { ...state.settings };
-    localStorage.clear();
-    
-    // Restore settings with preserved token
-    state.settings = savedSettings;
-    state.settings.telegramToken = savedToken;
-    saveSettings();
-    
-    // Clear IndexedDB
-    try {
-        await dbClearAll();
-        showToast('Données effacées (Token conservé)', 'success');
-        setTimeout(() => location.reload(), 1000);
-    } catch (e) {
-        console.error('Error clearing DB:', e);
-        location.reload();
+    // Clear IndexedDB if available
+    if (state.db) {
+        try {
+            const tx = state.db.transaction('gpx', 'readwrite');
+            tx.objectStore('gpx').clear();
+        } catch (e) {
+            console.warn('Error clearing IndexedDB directly:', e);
+        }
     }
+
+    // Force reload to restart from scratch (shows wizard)
+    location.reload();
 }
 

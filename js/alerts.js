@@ -4,6 +4,7 @@
 const AlertType = {
     OFF_ROUTE: 'off_route',
     IMMOBILE: 'immobile',
+    OFFLINE: 'offline',
     RECONNECTED: 'reconnected',
     MOVING_AGAIN: 'moving_again',
     BACK_ON_ROUTE: 'back_on_route'
@@ -103,6 +104,42 @@ class AlertEngine {
         return alerts;
     }
 
+    /**
+     * Manages offline/online status as an alert.
+     */
+    setOffline(pid, name, isOffline) {
+        if (!this.activeAlerts.has(pid)) this.activeAlerts.set(pid, new Set());
+        const active = this.activeAlerts.get(pid);
+        const now = Date.now();
+
+        if (isOffline && !active.has(AlertType.OFFLINE)) {
+            active.add(AlertType.OFFLINE);
+            const alert = {
+                type: AlertType.OFFLINE,
+                participantId: pid,
+                participantName: name,
+                message: `⚪ ${name} est Hors Ligne (Signal perdu)`,
+                ts: now,
+                color: '#94a3b8'
+            };
+            this.onAlert && this.onAlert(alert);
+            return alert;
+        } else if (!isOffline && active.has(AlertType.OFFLINE)) {
+            active.delete(AlertType.OFFLINE);
+            const alert = {
+                type: AlertType.RECONNECTED,
+                participantId: pid,
+                participantName: name,
+                message: `✅ ${name} est de nouveau en ligne`,
+                ts: now,
+                color: '#10b981'
+            };
+            this.onResolve && this.onResolve(alert);
+            return alert;
+        }
+        return null;
+    }
+
     getActiveAlertsForParticipant(pid) {
         return this.activeAlerts.get(pid) || new Set();
     }
@@ -110,6 +147,7 @@ class AlertEngine {
     getWorstStatus(pid) {
         const active = this.activeAlerts.get(pid);
         if (!active || active.size === 0) return 'ok';
+        if (active.has(AlertType.OFFLINE)) return 'offline';
         if (active.has(AlertType.IMMOBILE)) return 'immobile';
         if (active.has(AlertType.OFF_ROUTE)) return 'off_route';
         return 'ok';

@@ -1,21 +1,20 @@
-const CACHE_NAME = 'livetrack-v1.3.6';
+const CACHE_NAME = 'livetiming-v2.0.4-test-fix';
 const ASSETS = [
   './',
-  'index.html',
-  'css/style.css',
-  'js/app.js',
-  'js/geo.js',
-  'js/gpx.js',
-  'js/alerts.js',
-  'js/telegram-client.js',
-  'js/qrcode.min.js',
-  'icons/icon-512.png',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  'index.html?v=2.0.4',
+  'css/style.css?v=2.0.4',
+  'js/app.js?v=2.0.4',
+  'js/geo.js?v=2.0.4',
+  'js/gpx.js?v=2.0.4',
+  'js/alerts.js?v=2.0.4',
+  'js/wizard.js?v=2.0.4',
+  'js/scoring.js?v=2.0.4',
+  'js/parser.js?v=2.0.4',
+  'icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  self.skipWaiting(); // Force the waiting service worker to become the active service worker.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
@@ -28,14 +27,13 @@ self.addEventListener('activate', (event) => {
         keys.filter((key) => key !== CACHE_NAME)
             .map((key) => caches.delete(key))
       );
-    })
+    }).then(() => self.clients.claim()) // Force the newly active service worker to take control of all open clients.
   );
 });
 
+// Network First strategy for everything during this transition phase
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
