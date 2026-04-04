@@ -41,10 +41,10 @@ html, body { height: 100%; overflow: hidden; width: 100vw; }
 body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-primary); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
 
 /* ── App Layout ───────────────────────────────────────────── */
-#app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: 56px 1fr; height: 100vh; width: 100vw; }
+#app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: auto 1fr; height: 100dvh; width: 100vw; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); background: var(--bg-primary); }
 
 /* ── Top Bar ──────────────────────────────────────────────── */
-#topbar { grid-column: 1/-1; display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); z-index: 1000; }
+#topbar { grid-column: 1/-1; display: flex; align-items: center; gap: 16px; padding: 0 20px; min-height: 56px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); z-index: 1000; }
 #topbar .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
 #topbar .logo .dot { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), #fbbf24); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 0 14px var(--accent-glow); }
 .topbar-spacer { flex: 1; }
@@ -504,7 +504,8 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
   /* Topbar ajustement */
   #topbar {
     padding: 0 10px;
-    height: 56px;
+    min-height: 56px;
+    height: auto;
     flex-shrink: 0;
   }
   #mobile-menu-btn {
@@ -523,9 +524,9 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
   /* Panneau Off-canvas (Tiroir) */
   #sidebar {
     position: fixed;
-    top: 56px;
+    top: max(56px, env(safe-area-inset-top));
     left: 0;
-    bottom: 0;
+    bottom: env(safe-area-inset-bottom);
     width: 320px;
     max-width: 85vw;
     z-index: 9999;
@@ -541,7 +542,7 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
   /* Overlay arrière plan quand le menu est ouvert */
   #sidebar-overlay {
     position: fixed;
-    top: 56px; left: 0; right: 0; bottom: 0;
+    top: max(56px, env(safe-area-inset-top)); left: 0; right: 0; bottom: env(safe-area-inset-bottom);
     background: rgba(0,0,0,0.6);
     backdrop-filter: blur(2px);
     z-index: 9998;
@@ -561,5 +562,6 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
   /* Ajustements divers Dashboard */
   #dashboard-container {
     padding: 15px;
+    margin-bottom: env(safe-area-inset-bottom);
   }
 }
