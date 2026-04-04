@@ -493,6 +493,10 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
 .leaflet-popup.p-popup .leaflet-popup-tip-container { display: none !important; }
 .leaflet-popup.p-popup .leaflet-popup-close-button { display: none !important; }
 
+#sidebar-overlay {
+  display: none;
+}
+
 /* ── Responsive Mobile (v2.5.1) ──────────────────────────────── */
 @media (max-width: 768px) {
   /* Annule la grille de bureau, le panneau et la carte superposés ou en ligne */
@@ -576,6 +580,7 @@ body.hide-wp-labels .leaflet-tooltip-pane { display: none !important; }
 
   /* Overlay arrière plan quand le menu est ouvert */
   #sidebar-overlay {
+    display: block;
     position: fixed;
     top: max(56px, env(safe-area-inset-top)); left: 0; right: 0; bottom: env(safe-area-inset-bottom);
     background: rgba(0,0,0,0.6);
