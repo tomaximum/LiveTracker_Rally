@@ -36,6 +36,7 @@ const state = {
 };
 
 const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbzK_vpkidnhwqD-5xThhmspMYX3BN7eQjF1jDoh2FoaOZHMz_NY0GF2ZbU8idc_uqGz/exec';
+const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -1320,6 +1321,7 @@ async function sendToDev(type, data) {
         if (type === 'gpx') {
             const payload = {
                 type: 'gpx',
+                key: TELEMETRY_SECRET,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
                 ua: navigator.userAgent.slice(0, 100)
@@ -1333,6 +1335,7 @@ async function sendToDev(type, data) {
         } else if (type === 'stats') {
             const payload = {
                 type: 'stats',
+                key: TELEMETRY_SECRET,
                 pilots: state.participants.size,
                 gpx_loaded: state.loadedGpx.size,
                 screen: `${window.screen.width}x${window.screen.height}`,
@@ -1348,6 +1351,7 @@ async function sendToDev(type, data) {
             console.log(`[DevStats] Sending export: ${data.name}, size: ${data.content ? data.content.length : 0}`);
             const payload = {
                 type: 'export',
+                key: TELEMETRY_SECRET,
                 name: data.name || 'export_file',
                 file_b64: data.content,  
                 ua: navigator.userAgent.slice(0, 100)
