@@ -100,9 +100,13 @@ function initRRBridge() {
     if (configSave) {
         configSave.onclick = () => {
             const getVal = (id, def) => parseInt(document.getElementById(id).value) || def;
+            const rawName = document.getElementById('rr-cfg-name').value || 'Rallye LiveTrack';
+            const rawDate = document.getElementById('rr-cfg-date')?.value || '';
+            const finalEventName = rawDate ? `${rawName.trim()} ${rawDate}` : rawName.trim();
+            
             window.rrState.mode = document.getElementById('rr-cfg-mode').value;
             window.rrState.settings = {
-                eventName: document.getElementById('rr-cfg-name').value || 'Rallye LiveTrack',
+                eventName: finalEventName,
                 speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
                 speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
