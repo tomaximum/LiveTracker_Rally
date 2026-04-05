@@ -164,19 +164,24 @@ function doPost(e) {
              // Binary comparison: compare length, if equal, we assume identical for our scope (PDFs change length when re-generated anyway due to timestamps)
              if (originalContentBinary.length === fileBytesOrString.length) isIdentical = true;
         }
-        // -- Helper pour journaliser les uploads côté Sheet --
+        // -- Helper pour journaliser les uploads côté Sheet (Sécurisé par Lock) --
         function logUpload(status, actionName) {
              if (SPREADSHEET_ID !== "") {
+                  var lockLog = LockService.getScriptLock();
                   try {
-                       var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
-                       var upSheet = wb.getSheetByName("Uploads");
-                       if (!upSheet) {
-                            upSheet = wb.insertSheet("Uploads");
-                            upSheet.appendRow(["Horodatage", "Activité", "Événement", "Fichier", "Statut"]);
-                       }
-                       var ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
-                       upSheet.appendRow([ts, type, eventName, actionName, status]);
-                  } catch(e) {}
+                      lockLog.waitLock(15000); // 15 secondes max
+                      var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
+                      var upSheet = wb.getSheetByName("Uploads");
+                      if (!upSheet) {
+                           upSheet = wb.insertSheet("Uploads");
+                           upSheet.appendRow(["Horodatage", "Activité", "Événement", "Fichier", "Statut"]);
+                      }
+                      upSheet.appendRow([new Date(), type, eventName, actionName, status]);
+                  } catch(e) {
+                      // Ignorer s'il y a un échec
+                  } finally {
+                      lockLog.releaseLock();
+                  }
              }
         }
         
