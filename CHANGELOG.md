@@ -1,5 +1,11 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.6.0] - Stable (Cloud Data & Google Drive)
+- **Télémétrie Sécurisée (Backend GAS)** : Intégration complète d'un bouclier Google Apps Script intercepteur évitant les Security Strikes Google.
+- **Organisation Automatique Drive** : Algorithme backend rangeant automatiquement les Uploads PDF, les Fiches, et les traces GPX dans de véritables sous-dossiers.
+- **Déduplication 100% Intelligente** : Omission automatique des exportations de fichiers en doublon strict ; création de nouvelles versions historisées (`MAJ 10h30`) en cas de changement.
+- **Boîte Noire (Logs)** : Création et alimentation dynamique d'une feuille `Uploads` sur de Google Sheets pour tracer qui envoie quoi et quand.
+
 ## [2.0.2] - 2026-04-04
 - **Optimisation Test Bot** : Remplacement de l'envoi de message par une vérification `@getMe` (plus de `chat_id` requis pour tester le Token).
 - **Liberté Bot** : Suppression des IDs de chat de développement codés en dur pour permettre l'utilisation de n'importe quel Bot.
