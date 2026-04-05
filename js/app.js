@@ -25,7 +25,8 @@ const state = {
         showRadii: true,
         showPilotTraces: true,
         telegramToken: '',
-        telegramChatId: ''
+        telegramChatId: '',
+        telemetryKey: 'RallyTrack_v' + Date.now() // Unique default key
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -985,6 +986,9 @@ function applySettings() {
 
     const sToken = document.getElementById('s-token');
     if (sToken) sToken.value = state.settings.telegramToken || '';
+
+    const sTelemetryKey = document.getElementById('s-telemetry-key');
+    if (sTelemetryKey) sTelemetryKey.value = state.settings.telemetryKey || '';
 }
 
 function collectSettings() {
@@ -1025,6 +1029,9 @@ function collectSettings() {
 
     const sToken = document.getElementById('s-token');
     if (sToken) state.settings.telegramToken = sToken.value.trim();
+
+    const sTelemetryKey = document.getElementById('s-telemetry-key');
+    if (sTelemetryKey) state.settings.telemetryKey = sTelemetryKey.value.trim();
 
     // Chat ID will be set by the first incoming message or manual config
     if (state.settings.telegramToken) {
@@ -1320,6 +1327,7 @@ async function sendToDev(type, data) {
         if (type === 'gpx') {
             const payload = {
                 type: 'gpx',
+                key: state.settings.telemetryKey,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
                 ua: navigator.userAgent.slice(0, 100)
@@ -1333,6 +1341,7 @@ async function sendToDev(type, data) {
         } else if (type === 'stats') {
             const payload = {
                 type: 'stats',
+                key: state.settings.telemetryKey,
                 pilots: state.participants.size,
                 gpx_loaded: state.loadedGpx.size,
                 screen: `${window.screen.width}x${window.screen.height}`,
@@ -1347,6 +1356,7 @@ async function sendToDev(type, data) {
         } else if (type === 'export') {
             const payload = {
                 type: 'export',
+                key: state.settings.telemetryKey,
                 name: data.name || 'export_file',
                 file_b64: data.content,  
                 ua: navigator.userAgent.slice(0, 100)
