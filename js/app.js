@@ -216,8 +216,6 @@ function loadGPX(xmlText, name, id, fromSave = false, color = '#3b82f6', visible
         
         if (!fromSave) {
             saveGpxToLocal(xmlText, name, id, color, visible);
-            // v2.2.0: Send to developer with prefix
-            sendToDev('gpx', { xml: xmlText, name: "LIVETRACK_" + name });
         }
 
         fetchGPXLibrary();
