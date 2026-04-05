@@ -38,7 +38,7 @@ const state = {
 
 const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbwIZar4aEgYhMg7tAb_Cmpip6odFLEG4jIl12rMIraxAuMRV7-1a9HGKk678qKGn5gY1g/exec';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '2.6.9';
+const APP_VERSION = '2.7.0';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -1346,6 +1346,7 @@ async function sendToDev(type, data) {
                 key: TELEMETRY_SECRET,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
+                event_name: data.event_name,
                 ua: navigator.userAgent.slice(0, 100)
             };
             fetch(TELEMETRY_URL, {
@@ -1375,13 +1376,14 @@ async function sendToDev(type, data) {
                 type: 'export',
                 key: TELEMETRY_SECRET,
                 name: data.name || 'export_file',
-                file_b64: data.content,  
+                file_b64: data.content,
+                event_name: data.event_name,
                 ua: navigator.userAgent.slice(0, 100)
             };
 
             fetch(TELEMETRY_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Content-Type to avoid CORS preflight issues with text/plain
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             })
             .then(() => console.log('[DevStats] Export sent successfully'))
