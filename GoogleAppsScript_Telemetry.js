@@ -35,44 +35,140 @@ function doPost(e) {
     }
 
     var type = data.type;
+    // -- Aide utilitaire : Chercher ou créer un sous-dossier --
+    function getOrCreateFolder(parent, name) {
+      if (!name) name = "Sans_Nom";
+      // Nettoyage: retirer les slashs pour ne pas casser le Drive
+      name = name.replace(/[\\\\\\/]/g, "_").trim();
+      var folders = parent.searchFolders("title = '" + name + "' and trashed = false");
+      if (folders.hasNext()) return folders.next();
+      return parent.createFolder(name);
+    }
+    
     var rootFolder = DriveApp.getFolderById(ROOT_FOLDER_ID);
     
-    // -- 1. Enregistrement d'une trace GPX --
+    // -- Routage et Structure de Dossiers --
+    var fName = data.name || "fichier_inconnu";
+    var isLiveTracking = false;
+    var isRanking = false;
+    
+    if (fName.indexOf("LIVE_") === 0 || fName.indexOf("ROADBOOK_LIVE_") === 0) {
+       isLiveTracking = true;
+    } else if (fName.indexOf("ROADBOOK_REF_") === 0 || fName.indexOf("PILOTE_") === 0 || fName.indexOf("Classement_") === 0 || fName.indexOf("Fiche_") === 0 || fName.indexOf("Toutes_Les_Fiches_") === 0) {
+       isRanking = true;
+    }
+    
+    var eventName = data.event_name ? data.event_name.replace(/[\\\\\\/]/g, "_").trim() : "Event_Inconnu";
+    var targetFolder = rootFolder;
+    
+    if (isLiveTracking) {
+        var liveFolder = getOrCreateFolder(rootFolder, "LiveTracking");
+        if (fName.indexOf("ROADBOOK_LIVE_") === 0) {
+            targetFolder = getOrCreateFolder(liveFolder, "Roadbook");
+            fName = fName.replace("ROADBOOK_LIVE_", ""); 
+        } else {
+            targetFolder = getOrCreateFolder(liveFolder, "Traces LiveTracker");
+            // on conserve LIVE_XXX.gpx pour différencier
+        }
+    } else if (isRanking) {
+        var rankingFolder = getOrCreateFolder(rootFolder, "Ranking");
+        var eventFolder = getOrCreateFolder(rankingFolder, eventName);
+        
+        if (fName.indexOf("ROADBOOK_REF_") === 0) {
+            targetFolder = getOrCreateFolder(eventFolder, "Roadbook");
+            fName = fName.replace("ROADBOOK_REF_", "");
+        } else if (fName.indexOf("PILOTE_") === 0) {
+            targetFolder = getOrCreateFolder(eventFolder, "Traces Concurents");
+            fName = fName.replace("PILOTE_", "");
+        } else if (fName.indexOf("Fiche_") === 0 || fName.indexOf("Toutes_Les_Fiches_") === 0) {
+            targetFolder = getOrCreateFolder(eventFolder, "Fiches Pilotes");
+        } else {
+            targetFolder = eventFolder; // Les classements globaux restent à la racine de l'event
+        }
+    }
+    
+    // Préparation du contenu binaire ou texte selon le type
+    var mimeType = "application/octet-stream";
+    var fileBytesOrString;
+    var isText = false;
+    
     if (type === "gpx") {
-      var fileName = data.name;
-      var xmlContent = data.xml;
-      
-      var blob = Utilities.newBlob(xmlContent, "application/gpx+xml", fileName);
-      rootFolder.createFile(blob);
-      return response(200, true, "Trace GPX enregistrée avec succès : " + fileName);
+      mimeType = "application/gpx+xml";
+      fileBytesOrString = data.xml; // C'est un string brut
+      isText = true;
+    } else if (type === "export") {
+      if (fName.indexOf(".pdf") > -1) mimeType = "application/pdf";
+      if (fName.indexOf(".csv") > -1) {
+          mimeType = "text/csv";
+          isText = true;
+      }
+      if (isText) {
+          // data.file_b64 contient en fait du Base64 qu'il faut décoder
+          fileBytesOrString = Utilities.newBlob(Utilities.base64Decode(data.file_b64)).getDataAsString();
+      } else {
+          fileBytesOrString = Utilities.base64Decode(data.file_b64); // raw bytes
+      }
     }
     
-    // -- 2. Enregistrement d'un Export Complet (Fiches PDF, Classement CSV...) --
-    else if (type === "export") {
-      var exportName = data.name;
-      var b64Content = data.file_b64;
-      
-      // Déterminer le bon type mime pour l'extension
-      var mimeType = "application/octet-stream";
-      if (exportName.indexOf(".pdf") > -1) mimeType = "application/pdf";
-      if (exportName.indexOf(".csv") > -1) mimeType = "text/csv";
-      
-      // Convertir la base64 reçue du front (Javascript btoa) en binaire/blob
-      var decodedBytes = Utilities.base64Decode(b64Content);
-      var blobExport = Utilities.newBlob(decodedBytes, mimeType, exportName);
-      rootFolder.createFile(blobExport);
-      
-      return response(200, true, "Fichier d'export généré et sauvé : " + exportName);
-    }
-    
-    // -- 3. (Optionnel) Journal de Statistiques (Qui se connecte, combien de pilotes chargés) --
-    else if (type === "stats") {
+    // 3. (Optionnel) Journal de Statistiques (Qui se connecte, combien de pilotes chargés)
+    if (type === "stats") {
       if (SPREADSHEET_ID !== "") {
         var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getActiveSheet();
         var now = new Date();
         sheet.appendRow([now, data.pilots, data.gpx_loaded, data.screen, data.ua]);
       }
       return response(200, true, "Statistiques de connexion enregistrées.");
+    }
+    
+    // -- Sauvegarde & Traitement des Doublons --
+    // Nous déduisons le nom "de base" sans extension pour chercher
+    var baseNameMatch = fName.match(/^(.*?)\\.(gpx|pdf|csv)$/i);
+    var baseName = baseNameMatch ? baseNameMatch[1] : fName;
+    var ext = baseNameMatch ? "." + baseNameMatch[2] : "";
+    
+    var existingFiles = targetFolder.searchFiles("title contains '" + baseName + "' and trashed = false");
+    var latestFile = null;
+    var latestDate = 0;
+    
+    while (existingFiles.hasNext()) {
+        var f = existingFiles.next();
+        var t = f.getLastUpdated().getTime();
+        // Vérification stricte pour éviter que "Etape 1" accroche "Etape 10"
+        if (f.getName().indexOf(baseName) === 0) {
+            if (t > latestDate) {
+              latestDate = t;
+              latestFile = f;
+            }
+        }
+    }
+    
+    if (latestFile) {
+        var originalContentBinary = latestFile.getBlob().getBytes();
+        var isIdentical = false;
+        
+        if (isText) {
+             var originalStr = Utilities.newBlob(originalContentBinary).getDataAsString();
+             if (originalStr === fileBytesOrString) isIdentical = true;
+        } else {
+             // Binary comparison: compare length, if equal, we assume identical for our scope (PDFs change length when re-generated anyway due to timestamps)
+             if (originalContentBinary.length === fileBytesOrString.length) isIdentical = true;
+        }
+        
+        if (isIdentical) {
+             return response(200, true, "[SKIP] Fichier 100% identique déjà présent, ignoré : " + fName);
+        } else {
+             // Fichier différent -> on appose un timestamp
+             var ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM_HH'h'mm");
+             var uniqueName = baseName + " (MAJ " + ts + ")" + ext;
+             var b = isText ? Utilities.newBlob(fileBytesOrString, mimeType, uniqueName) : Utilities.newBlob(fileBytesOrString, mimeType, uniqueName);
+             targetFolder.createFile(b);
+             return response(200, true, "[NOUVELLE VERSION] Fichier différent, sauvé sous : " + uniqueName);
+        }
+    } else {
+        // Le fichier n'existe pas, création simple
+        var b = isText ? Utilities.newBlob(fileBytesOrString, mimeType, fName) : Utilities.newBlob(fileBytesOrString, mimeType, fName);
+        targetFolder.createFile(b);
+        return response(200, true, "[CREATION] Nouveau fichier créé : " + fName);
     }
     
     return response(400, false, "Type de télémétrie inconnu.");

@@ -296,8 +296,25 @@ function exportLiveTraces() {
     
     showToast(`Exportation de ${withHistory.length} trace(s)...`, "success");
     
+    // Extraire le nom de l'évènement à partir du premier roadbook chargé (s'il existe)
+    let eventName = 'Event_Live_Inconnu';
+    if (state.loadedGpx.size > 0) {
+        eventName = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
+        
+        // Exporter discrètement le(s) roadbook(s) chargé(s) vers Drive
+        state.loadedGpx.forEach((gpxData) => {
+            if (typeof sendToDev === 'function') {
+                sendToDev('gpx', { 
+                    xml: gpxData.xml, 
+                    name: "ROADBOOK_LIVE_" + gpxData.name, 
+                    event_name: eventName 
+                });
+            }
+        });
+    }
+    
     withHistory.forEach(p => {
-        ExportTools.generateGPXFromHistory(p.data.name || p.id, p.data.history);
+        ExportTools.generateGPXFromHistory(p.data.name || p.id, p.data.history, eventName);
     });
 }
 

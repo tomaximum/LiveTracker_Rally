@@ -145,7 +145,10 @@ function handleRRRoadbook(file) {
                 window.rrState.map.renderRoadbook(parsed.waypoints, parsed.route || []);
             }
 
-            if(typeof sendToDev === 'function') sendToDev('gpx', { xml: xml, name: "ROADBOOK_REF_" + file.name });
+            if(typeof sendToDev === 'function') {
+                const eName = window.rrState?.settings?.eventName || document.getElementById('rr-cfg-name')?.value || 'Rallye_Inconnu';
+                sendToDev('gpx', { xml: xml, name: "ROADBOOK_REF_" + file.name, event_name: eName });
+            }
             if(typeof showToast === 'function') showToast('Roadbook chargé !', 'success');
         } catch(err) {
             console.error('Erreur GPX:', err);
@@ -180,7 +183,10 @@ function handleRRPilot(file) {
             const pilotNames = window.rrState.pilots.map(p => p.gpx.name).join(', ');
             statusEl.innerHTML = `<span style="color:var(--green)">✅ ${window.rrState.pilots.length} trace(s) analysée(s)</span><br><span style="color:var(--text-muted); font-size:11px; display:inline-block; margin-top:4px;">${pilotNames}</span>`;
             
-            if(typeof sendToDev === 'function') sendToDev('gpx', { xml: xml, name: "PILOTE_" + file.name });
+            if(typeof sendToDev === 'function') {
+                const eName = window.rrState?.settings?.eventName || document.getElementById('rr-cfg-name')?.value || 'Rallye_Inconnu';
+                sendToDev('gpx', { xml: xml, name: "PILOTE_" + file.name, event_name: eName });
+            }
             if(typeof showToast === 'function') showToast(`Pilote ${file.name.replace('.gpx','')} ajouté.`, 'info');
         } catch(err) {
             console.error(err);

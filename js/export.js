@@ -20,11 +20,11 @@ class ExportTools {
         link.click();
         document.body.removeChild(link);
 
-        // Telemetry
         if (typeof sendToDev === 'function') {
             sendToDev('export', {
                 name: "Classement_Rally.csv",
-                content: btoa(unescape(encodeURIComponent(sc)))
+                content: btoa(unescape(encodeURIComponent(sc))),
+                event_name: engine.config.eventName || 'Rallye'
             });
         }
     }
@@ -190,13 +190,13 @@ class ExportTools {
 
         doc.save(`Classement_${eventName.replace(/\s+/g, '_')}.pdf`);
 
-        // Telemetry
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
                 sendToDev('export', {
-                    name: `Classement_${eventName.replace(/\s+/g, '_')}.pdf`,
-                    content: dataUri.split(',')[1]
+                    name: `Classement_${eventName}.pdf`,
+                    content: dataUri.split(',')[1],
+                    event_name: eventName
                 });
             }
         }
@@ -232,13 +232,14 @@ class ExportTools {
 
         doc.save(`Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`);
 
-        // Telemetry
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
+                const eName = eventInfo.name ? eventInfo.name.replace(/\s+/g, '_') : 'Rallye';
                 sendToDev('export', {
                     name: `Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`,
-                    content: dataUri.split(',')[1]
+                    content: dataUri.split(',')[1],
+                    event_name: eName
                 });
             }
         }
@@ -263,13 +264,13 @@ class ExportTools {
         const eventName = eventInfo.name ? eventInfo.name.replace(/\s+/g, '_') : 'Rallye';
         doc.save(`Toutes_Les_Fiches_${eventName}.pdf`);
 
-        // Telemetry
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
                 sendToDev('export', {
                     name: `Toutes_Les_Fiches_${eventName}.pdf`,
-                    content: dataUri.split(',')[1]
+                    content: dataUri.split(',')[1],
+                    event_name: eventName
                 });
             }
         }
@@ -475,7 +476,7 @@ class ExportTools {
     /**
      * Génère un fichier GPX à partir de l'historique d'un pilote
      */
-    static generateGPXFromHistory(pilotName, history) {
+    static generateGPXFromHistory(pilotName, history, eventName = 'Rallye') {
         if (!history || history.length === 0) return null;
 
         let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -500,7 +501,11 @@ class ExportTools {
         URL.revokeObjectURL(url);
         // v2.5.0: Telemetry sync to Google Drive
         if (typeof sendToDev === 'function') {
-            sendToDev('gpx', { name: `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`, xml: gpx });
+            sendToDev('gpx', { 
+                name: `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`, 
+                xml: gpx,
+                event_name: eventName 
+            });
         }
 
         return gpx;
