@@ -153,22 +153,43 @@ function doPost(e) {
              // Binary comparison: compare length, if equal, we assume identical for our scope (PDFs change length when re-generated anyway due to timestamps)
              if (originalContentBinary.length === fileBytesOrString.length) isIdentical = true;
         }
+        // -- Helper pour journaliser les uploads côté Sheet --
+        function logUpload(status, actionName) {
+             if (SPREADSHEET_ID !== "") {
+                  try {
+                       var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
+                       var upSheet = wb.getSheetByName("Uploads");
+                       if (!upSheet) {
+                            upSheet = wb.insertSheet("Uploads");
+                            upSheet.appendRow(["Horodatage", "Activité", "Événement", "Fichier", "Statut"]);
+                       }
+                       var ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+                       upSheet.appendRow([ts, type, eventName, actionName, status]);
+                  } catch(e) {}
+             }
+        }
         
         if (isIdentical) {
-             return response(200, true, "[SKIP] Fichier 100% identique déjà présent, ignoré : " + fName);
+             var msg = "[SKIP] Fichier 100% identique déjà présent, ignoré : " + fName;
+             logUpload("Ignoré (Doublon Exact)", fName);
+             return response(200, true, msg);
         } else {
              // Fichier différent -> on appose un timestamp
              var ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd-MM_HH'h'mm");
              var uniqueName = baseName + " (MAJ " + ts + ")" + ext;
              var b = isText ? Utilities.newBlob(fileBytesOrString, mimeType, uniqueName) : Utilities.newBlob(fileBytesOrString, mimeType, uniqueName);
              targetFolder.createFile(b);
-             return response(200, true, "[NOUVELLE VERSION] Fichier différent, sauvé sous : " + uniqueName);
+             var msg = "[NOUVELLE VERSION] Fichier différent, sauvé sous : " + uniqueName;
+             logUpload("Sauvegardé (Mise à Jour)", uniqueName);
+             return response(200, true, msg);
         }
     } else {
         // Le fichier n'existe pas, création simple
         var b = isText ? Utilities.newBlob(fileBytesOrString, mimeType, fName) : Utilities.newBlob(fileBytesOrString, mimeType, fName);
         targetFolder.createFile(b);
-        return response(200, true, "[CREATION] Nouveau fichier créé : " + fName);
+        var msg = "[CREATION] Nouveau fichier créé : " + fName;
+        logUpload("Sauvegardé (Nouveau)", fName);
+        return response(200, true, msg);
     }
     
     return response(400, false, "Type de télémétrie inconnu.");
