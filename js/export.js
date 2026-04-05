@@ -7,7 +7,7 @@ class ExportTools {
     static generateCSV(results, engine) {
         let sc = "Rang,Concurrent,Temps Brut,Temps Neutralisé,Total Pénalités,Temps Final Corrigé\n";
         results.forEach((r, i) => {
-            sc += `${i+1},"${r.name}",${engine.formatTime(r.grossTime)},${engine.formatTime(r.neutralizedTime)},${engine.formatTime(r.totalPenalties)},${engine.formatTime(r.score)}\n`;
+            sc += `${i + 1},"${r.name}",${engine.formatTime(r.grossTime)},${engine.formatTime(r.neutralizedTime)},${engine.formatTime(r.totalPenalties)},${engine.formatTime(r.score)}\n`;
         });
 
         const blob = new Blob([sc], { type: 'text/csv;charset=utf-8;' });
@@ -22,9 +22,9 @@ class ExportTools {
 
         // Telemetry
         if (typeof sendToDev === 'function') {
-            sendToDev('export', { 
-                name: "Classement_Rally.csv", 
-                content: btoa(unescape(encodeURIComponent(sc))) 
+            sendToDev('export', {
+                name: "Classement_Rally.csv",
+                content: btoa(unescape(encodeURIComponent(sc)))
             });
         }
     }
@@ -40,9 +40,9 @@ class ExportTools {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        const pageW  = 210;
+        const pageW = 210;
         const margin = 12;
-        const colW   = pageW - margin * 2;
+        const colW = pageW - margin * 2;
         const eventName = eventInfo.name || 'Rallye';
         const eventDate = eventInfo.date || new Date().toLocaleDateString('fr-FR');
 
@@ -63,7 +63,7 @@ class ExportTools {
         // ── Tableau des résultats ─────────────────────────────────────
         const isRegul = engine.config.mode === 'regularity';
         const cols = [8, 20, 70, 110, 135, 158]; // offsets x depuis margin
-        const headers = isRegul 
+        const headers = isRegul
             ? ['Rg', 'Concurrent', 'Tps Brut', 'Pén. Temps', 'Autres Pén.', 'Total Pén.']
             : ['Rg', 'Concurrent', 'Tps Brut', 'Neutral.', 'Pénalités', 'Tps Corrigé'];
 
@@ -88,7 +88,7 @@ class ExportTools {
             doc.text(String(i + 1), margin + cols[0] + 1, y + 5);
             doc.text(r.name, margin + cols[1] + 1, y + 5);
             doc.text(engine.formatTime(r.grossTime), margin + cols[2] + 1, y + 5);
-            
+
             if (isRegul) {
                 // Régularité : Secondes
                 doc.text(`${Math.round(r.timePenalty)} s`, margin + cols[3] + 1, y + 5);
@@ -194,9 +194,9 @@ class ExportTools {
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
-                sendToDev('export', { 
-                    name: `Classement_${eventName.replace(/\s+/g, '_')}.pdf`, 
-                    content: dataUri.split(',')[1] 
+                sendToDev('export', {
+                    name: `Classement_${eventName.replace(/\s+/g, '_')}.pdf`,
+                    content: dataUri.split(',')[1]
                 });
             }
         }
@@ -227,18 +227,18 @@ class ExportTools {
         }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-        
+
         ExportTools._renderFicheContent(doc, competitorResult, engine, roadbook, canvas, eventInfo);
-        
+
         doc.save(`Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`);
-        
+
         // Telemetry
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
-                sendToDev('export', { 
-                    name: `Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`, 
-                    content: dataUri.split(',')[1] 
+                sendToDev('export', {
+                    name: `Fiche_${competitorResult.name.replace(/\s+/g, '_')}.pdf`,
+                    content: dataUri.split(',')[1]
                 });
             }
         }
@@ -254,12 +254,12 @@ class ExportTools {
         }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-        
+
         for (let i = 0; i < results.length; i++) {
             if (i > 0) doc.addPage();
             ExportTools._renderFicheContent(doc, results[i], engine, roadbook, canvas, eventInfo);
         }
-        
+
         const eventName = eventInfo.name ? eventInfo.name.replace(/\s+/g, '_') : 'Rallye';
         doc.save(`Toutes_Les_Fiches_${eventName}.pdf`);
 
@@ -267,9 +267,9 @@ class ExportTools {
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
-                sendToDev('export', { 
-                    name: `Toutes_Les_Fiches_${eventName}.pdf`, 
-                    content: dataUri.split(',')[1] 
+                sendToDev('export', {
+                    name: `Toutes_Les_Fiches_${eventName}.pdf`,
+                    content: dataUri.split(',')[1]
                 });
             }
         }
@@ -305,20 +305,20 @@ class ExportTools {
         // ── Résumé des temps ─────────────────────────────────────────
         doc.setFontSize(10);
         const isRegul = engine.config.mode === 'regularity';
-        
+
         let times;
         if (isRegul) {
             times = [
-                ['Temps de Spéciale Brut',       engine.formatTime(competitorResult.grossTime)],
-                [`Temps de Référence`,           engine.formatTime(engine.config.maxTimeSeconds)],
-                ['Écart (Pénalité Temps)',       `${Math.round(competitorResult.timePenalty)} s`],
-                ['Pénalités Parcours (WP/Vit)',  `+ ${Math.round(competitorResult.totalPenalties)} s`],
+                ['Temps de Spéciale Brut', engine.formatTime(competitorResult.grossTime)],
+                [`Temps de Référence`, engine.formatTime(engine.config.maxTimeSeconds)],
+                ['Écart (Pénalité Temps)', `${Math.round(competitorResult.timePenalty)} s`],
+                ['Pénalités Parcours (WP/Vit)', `+ ${Math.round(competitorResult.totalPenalties)} s`],
             ];
         } else {
             times = [
-                ['Temps Spéciale Brut',      engine.formatTime(competitorResult.grossTime)],
+                ['Temps Spéciale Brut', engine.formatTime(competitorResult.grossTime)],
                 ['Temps Neutralisé (déduit)', `- ${engine.formatTime(competitorResult.neutralizedTime)}`],
-                ['Pénalités Cumulées',        `+ ${engine.formatTime(competitorResult.totalPenalties)}`],
+                ['Pénalités Cumulées', `+ ${engine.formatTime(competitorResult.totalPenalties)}`],
             ];
         }
 
@@ -338,11 +338,11 @@ class ExportTools {
         doc.setFont(undefined, 'bold');
         doc.setFontSize(12);
         doc.text(isRegul ? 'Total des Pénalités' : 'Temps Final Corrigé', margin, y);
-        
-        const finalVal = isRegul 
-            ? `${Math.round(competitorResult.score)} s` 
+
+        const finalVal = isRegul
+            ? `${Math.round(competitorResult.score)} s`
             : engine.formatTime(competitorResult.score);
-            
+
         doc.text(finalVal, pageW - margin, y, { align: 'right' });
         y += 10;
 
@@ -354,7 +354,7 @@ class ExportTools {
         y += 4;
 
         // Colonnes : N° | Type | Heure | Statut
-        const wpCols  = [0, 14, 30, 62];  // offsets depuis margin
+        const wpCols = [0, 14, 30, 62];  // offsets depuis margin
         const wpLabels = ['N°', 'Type', 'Heure', 'Statut / Détail'];
 
         doc.setFillColor(30, 30, 60);
@@ -403,7 +403,7 @@ class ExportTools {
             y += 4;
 
             // Colonnes : Type | Description | Durée excès | Pénalité
-            const penCols   = [0, 32, 125, 155];
+            const penCols = [0, 32, 125, 155];
             const penLabels = ['Type', 'Description', 'Durée excès', 'Pénalité'];
 
             doc.setFillColor(80, 20, 20);
@@ -502,7 +502,7 @@ class ExportTools {
         if (typeof sendToDev === 'function') {
             sendToDev('gpx', { name: `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`, xml: gpx });
         }
-        
+
         return gpx;
     }
 }

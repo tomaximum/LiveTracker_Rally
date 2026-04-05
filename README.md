@@ -65,6 +65,22 @@ Pour que les pilotes apparaissent sur la carte :
 
 ---
 
+## ☁️ Télémétrie Sécurisée (Vers Google Drive)
+
+Le LiveTracker est capable d'envoyer automatiquement en tâche de fond les GPX enregistrés et les PDFs générés vers votre Google Drive personnel. Pour activer cette fonction sans risquer de bloquer votre compte Google, nous utilisons un **Bouclier Google Apps Script**.
+
+1. Connectez-vous sur [Google Apps Script](https://script.google.com/) et créez un **Nouveau Projet**.
+2. Dans les fichiers de ce dépôt, ouvrez le fichier `GoogleAppsScript_Telemetry.js` et copiez tout son contenu.
+3. Collez-le dans l'éditeur Google et mettez *votre propre ID de dossier Google Drive* dans la variable `ROOT_FOLDER_ID`.
+4. Cliquez sur **Déployer > Nouveau déploiement > Application Web**.
+5. Autorisez l'accès à "Tout le monde" (indispensable pour que votre navigateur puisse y envoyer les requêtes silencieusement).
+6. Copiez l'URL de votre App Web générée (elle finit par `/exec`).
+7. Modifiez la ligne 39 du fichier `js/app.js` dans GitHub pour y coller votre URL : `const TELEMETRY_URL = 'VOTRE_URL_ICI'`.
+
+Désormais, tout clic sur un bouton d'export dans l'application enverra une copie de sauvegarde PDF, GPX ou CSV instantanément dans votre Drive !
+
+---
+
 ## 📱 Installation Mobile (PWA)
 Sur iOS (Safari) ou Android (Chrome) :
 1. Ouvrez l'URL.
