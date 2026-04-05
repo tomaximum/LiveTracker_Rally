@@ -35,14 +35,25 @@ function doPost(e) {
     }
 
     var type = data.type;
-    // -- Aide utilitaire : Chercher ou créer un sous-dossier --
+    // -- Aide utilitaire : Chercher ou créer un sous-dossier (Sécurisé pour la concurrence) --
     function getOrCreateFolder(parent, name) {
-      if (!name) name = "Sans_Nom";
+      if (!name || name === "") name = "Sans_Nom";
       // Nettoyage: retirer les slashs pour ne pas casser le Drive
       name = name.replace(/[\\\\\\/]/g, "_").trim();
-      var folders = parent.searchFolders("title = '" + name + "' and trashed = false");
-      if (folders.hasNext()) return folders.next();
-      return parent.createFolder(name);
+      
+      // On utilise un verrou (Lock) pour éviter que 50 fichiers envoyés en même temps
+      // ne créent 50 dossiers parallèles identiques
+      var lock = LockService.getScriptLock();
+      lock.waitLock(15000); // Attendre max 15 secondes
+      try {
+          var folders = parent.searchFolders("title = '" + name + "' and trashed = false");
+          if (folders.hasNext()) {
+              return folders.next();
+          }
+          return parent.createFolder(name);
+      } finally {
+          lock.releaseLock();
+      }
     }
     
     var rootFolder = DriveApp.getFolderById(ROOT_FOLDER_ID);
@@ -58,7 +69,7 @@ function doPost(e) {
        isRanking = true;
     }
     
-    var eventName = data.event_name ? data.event_name.replace(/[\\\\\\/]/g, "_").trim() : "Event_Inconnu";
+    var eventName = (data.event_name && data.event_name.trim() !== "") ? data.event_name.replace(/[\\\\\\/]/g, "_").trim() : "Event_Inconnu";
     var targetFolder = rootFolder;
     
     if (isLiveTracking) {
