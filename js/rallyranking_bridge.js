@@ -136,6 +136,7 @@ function handleRRRoadbook(file) {
             const xml = e.target.result;
             const parsed = GPXParser.parse(xml);
             parsed.name = file.name;
+            parsed._xml = xml; // Sauvegarde pour la télémétrie post-config
             window.rrState.roadbook = parsed;
             
             document.getElementById('status-roadbook').textContent = `✅ ${file.name} (${parsed.waypoints.length} WP)`;
@@ -145,10 +146,6 @@ function handleRRRoadbook(file) {
                 window.rrState.map.renderRoadbook(parsed.waypoints, parsed.route || []);
             }
 
-            if(typeof sendToDev === 'function') {
-                const eName = window.rrState?.settings?.eventName || document.getElementById('rr-cfg-name')?.value || 'Rallye_Inconnu';
-                sendToDev('gpx', { xml: xml, name: "ROADBOOK_REF_" + file.name, event_name: eName });
-            }
             if(typeof showToast === 'function') showToast('Roadbook chargé !', 'success');
         } catch(err) {
             console.error('Erreur GPX:', err);
@@ -173,6 +170,7 @@ function handleRRPilot(file) {
             }
             
             parsed.name = file.name.replace('.gpx', '').replace('.GPX', '');
+            parsed._xml = xml; // Sauvegarde pour la télémétrie post-config
             
             // Check if already exist to update instead of duplicate
             const existing = window.rrState.pilots.findIndex(p => p.gpx.name === parsed.name);
@@ -183,10 +181,6 @@ function handleRRPilot(file) {
             const pilotNames = window.rrState.pilots.map(p => p.gpx.name).join(', ');
             statusEl.innerHTML = `<span style="color:var(--green)">✅ ${window.rrState.pilots.length} trace(s) analysée(s)</span><br><span style="color:var(--text-muted); font-size:11px; display:inline-block; margin-top:4px;">${pilotNames}</span>`;
             
-            if(typeof sendToDev === 'function') {
-                const eName = window.rrState?.settings?.eventName || document.getElementById('rr-cfg-name')?.value || 'Rallye_Inconnu';
-                sendToDev('gpx', { xml: xml, name: "PILOTE_" + file.name, event_name: eName });
-            }
             if(typeof showToast === 'function') showToast(`Pilote ${file.name.replace('.gpx','')} ajouté.`, 'info');
         } catch(err) {
             console.error(err);
@@ -198,6 +192,21 @@ function handleRRPilot(file) {
 function calculateRRScoring() {
     if(!window.rrState.roadbook) return alert("Chargez d'abord le Roadbook (Référence).");
     if(window.rrState.pilots.length === 0) return alert("Chargez au moins un GPX pilote.");
+
+    // Télémétrie Drive : On déclenche l'envoi des GPX ici avec le vrai eventName du formulaire
+    if(typeof sendToDev === 'function') {
+        const eName = document.getElementById('rr-cfg-name')?.value || window.rrState?.settings?.eventName || 'Rallye_Inconnu';
+        
+        if (window.rrState.roadbook && window.rrState.roadbook._xml) {
+            sendToDev('gpx', { xml: window.rrState.roadbook._xml, name: "ROADBOOK_REF_" + window.rrState.roadbook.name, event_name: eName });
+        }
+        
+        window.rrState.pilots.forEach(p => {
+            if (p.gpx && p.gpx._xml) {
+                sendToDev('gpx', { xml: p.gpx._xml, name: "PILOTE_" + p.gpx.name + ".gpx", event_name: eName });
+            }
+        });
+    }
 
     // Roadbook max time calculation for regularity
     let rTracks = window.rrState.roadbook.trackPoints && window.rrState.roadbook.trackPoints.length > 0 ? window.rrState.roadbook.trackPoints : [];
