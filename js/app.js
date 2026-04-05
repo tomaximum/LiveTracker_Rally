@@ -36,7 +36,7 @@ const state = {
     wakeLock: null
 };
 
-const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbyIER9N9cfjsx8Z0bYhaZXpmgGh82MS9iblyly-OQHn7hKzM36849qPgPpHGsOWr4CI/exec';
+const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbwIZar4aEgYhMg7tAb_Cmpip6odFLEG4jIl12rMIraxAuMRV7-1a9HGKk678qKGn5gY1g/exec';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
