@@ -101,4 +101,4 @@ Cette application est purement statique (HTML/CSS/JS). Pour contribuer :
 Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ---
-*Développé par Antigravity et Tomaximum — Version 2.5.0*
+*Développé par Antigravity et Tomaximum — Version 2.6.0*
