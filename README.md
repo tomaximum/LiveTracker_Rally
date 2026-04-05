@@ -8,8 +8,8 @@
 
 ---
 
-## ✨ Points forts (v2.6.7)
-La version **v2.6.7** renforce la sécurité des transferts de données et améliore l'interface :
+## ✨ Points forts (v2.6.8)
+La version **v2.6.8** renforce la sécurité des transferts de données et améliore l'interface :
 - **Sécurité Télémétrie** : Ajout d'une clé API secrète pour protéger votre compte Google contre les abus.
 - **Mobile First** : Panneau escamotable et prise en compte des "Safe Areas" (Otb/Encoche) sur les écrans tactiles.
 - **Persistance Live** : Vos traces pilotes sont sauvegardées localement dans le navigateur (IndexedDB). Un rafraîchissement ou une coupure réseau ne fait plus perdre l'historique !
