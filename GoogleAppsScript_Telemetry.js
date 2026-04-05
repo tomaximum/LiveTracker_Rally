@@ -115,7 +115,7 @@ function doPost(e) {
       if (SPREADSHEET_ID !== "") {
         var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getActiveSheet();
         var now = new Date();
-        sheet.appendRow([now, data.pilots, data.gpx_loaded, data.screen, data.ua]);
+        sheet.appendRow([now, data.version || "N/A", data.pilots, data.gpx_loaded, data.screen, data.ua]);
       }
       return response(200, true, "Statistiques de connexion enregistrées.");
     }
