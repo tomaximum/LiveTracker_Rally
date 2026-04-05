@@ -137,6 +137,27 @@ function doPost(e) {
     var baseName = baseNameMatch ? baseNameMatch[1] : fName;
     var ext = baseNameMatch ? "." + baseNameMatch[2] : "";
     
+    // -- Helper pour journaliser les uploads côté Sheet (Sécurisé par Lock) --
+    function logUpload(status, actionName) {
+         if (SPREADSHEET_ID !== "") {
+              var lockLog = LockService.getScriptLock();
+              try {
+                  lockLog.waitLock(15000); // 15 secondes max
+                  var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
+                  var upSheet = wb.getSheetByName("Uploads");
+                  if (!upSheet) {
+                       upSheet = wb.insertSheet("Uploads");
+                       upSheet.appendRow(["Horodatage", "Activité", "Événement", "Fichier", "Statut"]);
+                  }
+                  upSheet.appendRow([new Date(), type, eventName, actionName, status]);
+              } catch(e) {
+                  // Ignorer s'il y a un échec
+              } finally {
+                  lockLog.releaseLock();
+              }
+         }
+    }
+    
     var existingFiles = targetFolder.searchFiles("title contains '" + baseName + "' and trashed = false");
     var latestFile = null;
     var latestDate = 0;
@@ -164,26 +185,7 @@ function doPost(e) {
              // Binary comparison: compare length, if equal, we assume identical for our scope (PDFs change length when re-generated anyway due to timestamps)
              if (originalContentBinary.length === fileBytesOrString.length) isIdentical = true;
         }
-        // -- Helper pour journaliser les uploads côté Sheet (Sécurisé par Lock) --
-        function logUpload(status, actionName) {
-             if (SPREADSHEET_ID !== "") {
-                  var lockLog = LockService.getScriptLock();
-                  try {
-                      lockLog.waitLock(15000); // 15 secondes max
-                      var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
-                      var upSheet = wb.getSheetByName("Uploads");
-                      if (!upSheet) {
-                           upSheet = wb.insertSheet("Uploads");
-                           upSheet.appendRow(["Horodatage", "Activité", "Événement", "Fichier", "Statut"]);
-                      }
-                      upSheet.appendRow([new Date(), type, eventName, actionName, status]);
-                  } catch(e) {
-                      // Ignorer s'il y a un échec
-                  } finally {
-                      lockLog.releaseLock();
-                  }
-             }
-        }
+
         
         if (isIdentical) {
              var msg = "[SKIP] Fichier 100% identique déjà présent, ignoré : " + fName;

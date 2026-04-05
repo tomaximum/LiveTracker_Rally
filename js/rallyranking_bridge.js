@@ -200,9 +200,9 @@ function calculateRRScoring() {
     // Télémétrie Drive : On déclenche l'envoi des GPX ici avec le vrai eventName du formulaire
     if(typeof sendToDev === 'function') {
         const rawDate = document.getElementById('rr-cfg-date')?.value || '';
-        const rawName = document.getElementById('rr-cfg-name')?.value || 'Rallye_Inconnu';
-        const eNameLive = rawDate ? `${rawName.trim()} ${rawDate}` : rawName.trim();
-        const eName = window.rrState?.settings?.eventName || eNameLive;
+        const rawName = document.getElementById('rr-cfg-name')?.value || '';
+        const eNameLive = rawDate ? `${rawName.trim()} ${rawDate}`.trim() : rawName.trim();
+        const eName = window.rrState?.settings?.eventName || eNameLive || 'Rallye_Inconnu';
         
         if (window.rrState.roadbook && window.rrState.roadbook._xml) {
             sendToDev('gpx', { xml: window.rrState.roadbook._xml, name: "ROADBOOK_REF_" + window.rrState.roadbook.name, event_name: eName });
