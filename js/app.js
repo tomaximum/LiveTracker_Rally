@@ -234,6 +234,16 @@ function loadGPX(xmlText, name, id, fromSave = false, color = '#3b82f6', visible
 function uploadGPX(name, content) {
     const id = 't_' + Date.now();
     loadGPX(content, name, id);
+    
+    // Envoyer immédiatement à la télémétrie Drive à l'insertion
+    const cleanName = name.replace(/\.gpx$/i, '');
+    if (typeof sendToDev === 'function') {
+        sendToDev('gpx', { 
+            xml: content, 
+            name: "ROADBOOK_LIVE_" + name, 
+            event_name: cleanName 
+        });
+    }
 }
 
 async function saveGpxToLocal(xml, name, id, color, visible) {
@@ -300,17 +310,6 @@ function exportLiveTraces() {
     let eventName = 'Event_Live_Inconnu';
     if (state.loadedGpx.size > 0) {
         eventName = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
-        
-        // Exporter discrètement le(s) roadbook(s) chargé(s) vers Drive
-        state.loadedGpx.forEach((gpxData) => {
-            if (typeof sendToDev === 'function') {
-                sendToDev('gpx', { 
-                    xml: gpxData.xml, 
-                    name: "ROADBOOK_LIVE_" + gpxData.name, 
-                    event_name: eventName 
-                });
-            }
-        });
     }
     
     withHistory.forEach(p => {
