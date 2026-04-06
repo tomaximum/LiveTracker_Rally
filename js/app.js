@@ -141,7 +141,7 @@ function updateRouteStats(route) {
     if (route && route.length > 1) {
         for (let i = 1; i < route.length; i++) {
             if (typeof haversineDistance === 'function') {
-                dist += haversineDistance(route[i-1], route[i]);
+                dist += haversineDistance(route[i-1], route[i]) / 1000;
             }
             if (route[i].ele !== undefined && route[i-1].ele !== undefined) {
                 const diff = route[i].ele - route[i-1].ele;
@@ -382,21 +382,25 @@ function updateParticipant(data) {
         participantData.lastMoved = now;
     }
 
-    // Update history
+    // Update history based on logInterval (v2.7.1)
     const lastPoint = history.length > 0 ? history[history.length - 1] : null;
+    const logInterval = (state.settings.logInterval || 10) * 1000; // to ms
+    const timeSinceLastLog = lastPoint ? (now - lastPoint.ts) : Infinity;
     
-    // Only add to history if moved significantly or first point
-    if (!lastPoint || haversineDistance(lastPoint, { lat, lng }) > 1) { 
+    // Always log the first point, then respect the interval
+    if (!lastPoint || timeSinceLastLog >= logInterval) { 
+        // Only log if moved or interval forced (to avoid redundant points while stationary)
+        // But the user wants "tous les points selon paramètre", so we just push if interval matched
         history.push({ lat, lng, ts: now });
         if (history.length > 5000) history.shift(); 
     }
 
-    // Calculate speed if missing and we have enough history
+    // Calculate speed (dist is now in meters)
     if (displaySpeed === undefined || displaySpeed === null) {
         if (history.length >= 2) {
             const p1 = history[history.length - 2];
             const p2 = history[history.length - 1];
-            const dist = haversineDistance(p1, p2);
+            const dist = haversineDistance(p1, p2); // meters
             const timeDiff = (p2.ts - p1.ts) / 1000; // seconds
             if (timeDiff > 0) {
                 displaySpeed = Math.round((dist / timeDiff) * 3.6);
@@ -607,21 +611,7 @@ function checkPilotHealth() {
     }
 }
 
-function updateMarkerStyle(p, status) {
-    const color = status === 'offline' ? '#94a3b8' // Grey
-        : status === 'immobile' ? '#ef4444' // Red
-        : status === 'off_route' ? '#f59e0b' // Orange
-        : '#10b981'; // Green for OK
 
-    const el = p.marker.getElement();
-    if (el) {
-        const dot = el.querySelector('.p-marker-dot');
-        if (dot) {
-            dot.style.borderColor = color;
-            dot.style.color = color;
-        }
-    }
-}
 
 function focusParticipant(id) {
     const p = state.participants.get(id);
