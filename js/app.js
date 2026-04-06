@@ -26,7 +26,7 @@ const state = {
         showPilotTraces: true,
         telegramToken: '',
         telegramChatId: '',
-        telemetryKey: 'RallyTrack_v' + Date.now() // Unique default key
+        telemetryKey: '' // Removed from UI, handled via TELEMETRY_SECRET
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -993,8 +993,7 @@ function applySettings() {
     const sToken = document.getElementById('s-token');
     if (sToken) sToken.value = state.settings.telegramToken || '';
 
-    const sTelemetryKey = document.getElementById('s-telemetry-key');
-    if (sTelemetryKey) sTelemetryKey.value = state.settings.telemetryKey || '';
+
 }
 
 function collectSettings() {
@@ -1036,8 +1035,7 @@ function collectSettings() {
     const sToken = document.getElementById('s-token');
     if (sToken) state.settings.telegramToken = sToken.value.trim();
 
-    const sTelemetryKey = document.getElementById('s-telemetry-key');
-    if (sTelemetryKey) state.settings.telemetryKey = sTelemetryKey.value.trim();
+
 
     // Chat ID will be set by the first incoming message or manual config
     if (state.settings.telegramToken) {
