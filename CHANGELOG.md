@@ -1,10 +1,17 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
-## [2.6.0] - Stable (Cloud Data & Google Drive)
-- **Télémétrie Sécurisée (Backend GAS)** : Intégration complète d'un bouclier Google Apps Script intercepteur évitant les Security Strikes Google.
-- **Organisation Automatique Drive** : Algorithme backend rangeant automatiquement les Uploads PDF, les Fiches, et les traces GPX dans de véritables sous-dossiers.
-- **Déduplication 100% Intelligente** : Omission automatique des exportations de fichiers en doublon strict ; création de nouvelles versions historisées (`MAJ 10h30`) en cas de changement.
-- **Boîte Noire (Logs)** : Création et alimentation dynamique d'une feuille `Uploads` sur de Google Sheets pour tracer qui envoie quoi et quand.
+## [2.7.1] - 2026-04-06 (Correctif Traces & Unités)
+- **Correction des Tracés** : Réparation du bug qui exigeait 1km de déplacement pour afficher les pointillés.
+- **Intervalle de Log** : Les traces respectent désormais le paramètre "Intervalle Log position" (ex: 10s).
+- **Normalisation des Unités** : Correction de l'incohérence Mètres/Kilomètres affectant la vitesse et les alertes.
+- **Précision** : Les vitesses affichées sont désormais exactes (km/h réels).
+- **Maintenance** : Nettoyage du code et montée de version globale.
+
+## [2.7.0] - Stable (Telemetry V2 & Mobile)
+- **Sécurité Télémétrie** : Ajout d'une clé API secrète.
+- **Mobile First** : Panneau escamotable et Safe Areas.
+- **Persistance** : Sauvegarde locale IndexedDB.
+
 
 ## [2.0.2] - 2026-04-04
 - **Optimisation Test Bot** : Remplacement de l'envoi de message par une vérification `@getMe` (plus de `chat_id` requis pour tester le Token).
