@@ -104,6 +104,8 @@ function initRRBridge() {
         modeSelect.onchange = () => {
             precisionBox.style.display = (modeSelect.value === 'precision') ? 'block' : 'none';
         };
+        // Trigger initial
+        precisionBox.style.display = (modeSelect.value === 'precision') ? 'block' : 'none';
     }
 
     if (configSave) {
@@ -119,6 +121,7 @@ function initRRBridge() {
             window.rrState.mode = document.getElementById('rr-cfg-mode').value;
             window.rrState.settings = {
                 eventName: finalEventName,
+                mode: window.rrState.mode,
                 speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
                 speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
@@ -288,7 +291,10 @@ function calculateRRScoring() {
     // Update Title Mode Label
     const modeLabel = document.getElementById('current-mode-label');
     if (modeLabel) {
-        modeLabel.textContent = `(Mode: ${window.rrState.mode === 'regularity' ? 'Régularité' : 'Temps Scratch'})`;
+        let label = 'Temps Scratch';
+        if (window.rrState.mode === 'regularity') label = 'Régularité';
+        if (window.rrState.mode === 'precision') label = 'Précision Rally';
+        modeLabel.textContent = `(Mode: ${label})`;
     }
 
     // Reset selection logic
