@@ -166,12 +166,12 @@ class GPXParser {
           
           const tcNode = this.getExtNode(wpt, "timecontrol");
           if (tcNode && tcNode.hasAttribute("allowed")) {
-              timecontrol = parseFloat(tcNode.getAttribute("allowed"));
+              timecontrol = parseFloat(tcNode.getAttribute("allowed")) / 60;
           }
 
           const neutralNode = this.getExtNode(wpt, "neutralization");
           if (neutralNode && neutralNode.textContent) {
-              neutralization = parseFloat(neutralNode.textContent);
+              neutralization = parseFloat(neutralNode.textContent) / 60;
           }
 
           // 3. Fallback "Rally Navigator" (desc) uniquement si absent du XML formel

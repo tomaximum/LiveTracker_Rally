@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livetrack-rally-v2.7.8';
+const CACHE_NAME = 'livetrack-rally-v2.7.9';
 const ASSETS = [
   './',
   'index.html',

@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.9] - 2026-04-20 (Fix Unité Balise Nautralization)
+- **Parseur GPX** : Tout comme la balise `time=`, la balise autonome `<openrally:neutralization>` exprime sa valeur en Secondes (et non en Minutes). Le parseur la convertit désormais correctement sous peine d'infliger des pénalités massives d'avance sur zone.
+
 ## [2.7.8] - 2026-04-20 (Fix Rally Navigator Auto-Upgrade)
 - **Parseur GPX** : Rattrapage automatique des silences de l'extracteur Rally Navigator. Si un point n'est déclaré NULLE PART comme temps contrôlé (`DN` ou `DT`) mais qu'il contient magiquement une balise `<openrally:neutralization>` (ou une durée `T=`), il est promu en force au rang de `DN` ou `DT`.
 
