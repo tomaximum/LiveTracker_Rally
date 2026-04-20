@@ -45,12 +45,18 @@ class ScoringEngine {
 
         // Variables pour le mode Précision (Corridor)
         let isPrecisionMode = (this.config.mode === 'precision');
-        let idealPath = this.roadbook.trackPoints || this.roadbook.route || [];
         
-        // v2.9.0.001: Fallback si le GPX ne contient que des Waypoints (<wpt>) sans trace/route
-        if (isPrecisionMode && idealPath.length < 2 && this.roadbook.waypoints && this.roadbook.waypoints.length >= 2) {
-            console.log("[ScoringEngine] Roadbook sans trace : utilisation des waypoints comme tracé idéal.");
-            idealPath = this.roadbook.waypoints;
+        // v2.9.0.008: Sélectionner uniquement un tracé GPX réel (trkpt/rtept sans timestamp)
+        // trackPoints contient uniquement les trkpt AVEC timestamp (traces pilotes)
+        // routePoints (= this.roadbook.route) contient les trkpt/rtept SANS timestamp (roadbook organisateur)
+        let idealPath = (this.roadbook.route && this.roadbook.route.length >= 2) ? this.roadbook.route : [];
+        let hasRealTrack = idealPath.length >= 2;
+        
+        // v2.9.0.008: Si pas de tracé GPX réel, désactiver le corridor (les lignes droites WP-à-WP
+        // ne correspondent pas aux routes et génèrent de faux positifs de 300-1000m)
+        if (isPrecisionMode && !hasRealTrack) {
+            console.warn('[ScoringEngine] ⚠️ Mode Précision activé mais le Roadbook ne contient pas de tracé GPX (trkpt/rtept). Le calcul de corridor est DÉSACTIVÉ. Pour activer le corridor, utilisez un GPX avec un tracé réel (<trk> ou <rte>).');
+            isPrecisionMode = false; // Désactive le scoring corridor pour ce calcul
         }
 
         // v2.9.0.005: Simplification ultra-légère (RDP) pour éliminer les doublons sans déformer les courbes
