@@ -384,6 +384,7 @@ class RallyMap {
             dz: '#F39C12',  fz: '#27AE60',
             wpm: '#3498DB', wpe: '#3498DB', wpv: '#9B59B6',
             wps: '#E67E22', wpn: '#C0392B', wpc: '#1ABC9C',
+            wpp: '#E91E8C',  // WP Précision — magenta distinct du tracé bleu
             checkpoint: '#1ABC9C',
             dn: '#95A5A6', fn: '#95A5A6',
             dt: '#BDC3C7', ft: '#BDC3C7'
@@ -392,7 +393,7 @@ class RallyMap {
     }
 
     _wptLabel(type) {
-        // v2.9.0.009: Labels lisibles pour chaque type de waypoint (nomenclature rally)
+        // Labels lisibles pour chaque type de waypoint (nomenclature rally)
         const labels = {
             dss: 'Début de spéciale (DSS)',
             ass: 'Arrêt de spéciale (ASS)',
@@ -404,6 +405,7 @@ class RallyMap {
             wps: 'WP Sécurité',
             wpn: 'WP Navigation',
             wpc: 'WP Caché',
+            wpp: 'WP Précision',   // Waypoint precision (caché + validation stricte)
             checkpoint: 'WP Caché',
             dn:  'Début neutralisation',
             fn:  'Fin neutralisation',

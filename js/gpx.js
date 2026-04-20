@@ -114,6 +114,7 @@ function parseWaypoints(xmlText) {
                     'wps': 'WP Sécurité (WPS)',
                     'wpn': 'WP Navigation (WPN)',
                     'wpc': 'WP Caché (WPC)',
+                    'wpp': 'WP Précision (WPP)',
                     'dss': 'Début Spéciale (DSS)',
                     'ass': 'Arrivée Spéciale (ASS)'
                 };
