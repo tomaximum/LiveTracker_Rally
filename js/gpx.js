@@ -108,10 +108,12 @@ function parseWaypoints(xmlText) {
                     'timecontrol': 'Début Transfert (DT)',
                     'dz': 'Début Zone (DZ)',
                     'fz': 'Fin Zone (FZ)',
-                    'wpv': 'WP Validation (WPV)',
+                    'wpv': 'WP Visible (WPV)',
                     'wpm': 'WP Masqué (WPM)',
+                    'wpe': 'WP Éclipse (WPE)',
                     'wps': 'WP Sécurité (WPS)',
-                    'wpc': 'WP Contrôle (WPC)',
+                    'wpn': 'WP Navigation (WPN)',
+                    'wpc': 'WP Caché (WPC)',
                     'dss': 'Début Spéciale (DSS)',
                     'ass': 'Arrivée Spéciale (ASS)'
                 };
