@@ -26,7 +26,9 @@ class ScoringEngine {
             totalPenalties: 0,
             wpLog: [],
             score: 0,
-            distanceTraveled: 0
+            distanceTraveled: 0,
+            racingStarted: false,  // v2.9.0.009: activé au 1er WP validé
+            racingEnded: false     // v2.9.0.009: activé après le dernier WP validé
         };
 
         if (tracks.length < 2) return result;
@@ -168,6 +170,10 @@ class ScoringEngine {
                     }
 
                     nextWptIdx = j + 1;
+                    // v2.9.0.009: Fin de course dès que tous les WP sont validés
+                    if (nextWptIdx >= wpts.length) {
+                        result.racingEnded = true;
+                    }
                     break;
                 }
             }
@@ -229,10 +235,11 @@ class ScoringEngine {
 
                 lastIdealIdx = bestIdx;
                 p_curr.offTrackDist = minDist;
-                p_curr.racingActive = result.racingStarted; // v2.9.0.006: Signal pour le rendu carte
+                // v2.9.0.009: Actif uniquement ENTRE le 1er et le dernier WP validé
+                p_curr.racingActive = result.racingStarted && !result.racingEnded;
 
-                // On ne pénalise que si la course a commencé
-                if (result.racingStarted && minDist > corridorTol) {
+                // On ne pénalise que si la course a commencé ET pas encore terminée
+                if (result.racingStarted && !result.racingEnded && minDist > corridorTol) {
                     let dtSeconds = (p_curr.time - p_prev.time) / 1000;
                     let pen = dtSeconds * corridorCoef;
                     let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];
