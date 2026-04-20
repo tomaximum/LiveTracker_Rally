@@ -392,18 +392,18 @@ class RallyMap {
     }
 
     _wptLabel(type) {
-        // v2.9.0.009: Labels lisibles pour chaque type de waypoint
+        // v2.9.0.009: Labels lisibles pour chaque type de waypoint (nomenclature rally)
         const labels = {
             dss: 'Début de spéciale (DSS)',
             ass: 'Arrêt de spéciale (ASS)',
             dz:  'Début de zone (DZ)',
             fz:  'Fin de zone (FZ)',
-            wpm: 'WP Obligatoire',
-            wpe: 'WP Obligatoire',
-            wpv: 'WP Vitesse',
+            wpm: 'WP Masqué',
+            wpe: 'WP Éclipse',
+            wpv: 'WP Visible',
             wps: 'WP Sécurité',
-            wpn: 'WP Neutre',
-            wpc: 'WP Caché',     // ⚠️ caché, pas "contrôle"
+            wpn: 'WP Navigation',
+            wpc: 'WP Caché',
             checkpoint: 'WP Caché',
             dn:  'Début neutralisation',
             fn:  'Fin neutralisation',
