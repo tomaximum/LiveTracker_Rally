@@ -96,6 +96,15 @@ function initRRBridge() {
 
     if(configClose) configClose.onclick = () => configModal.classList.remove('open');
     if(configCloseBtn) configCloseBtn.onclick = () => configModal.classList.remove('open');
+    
+    // Toggle block Précision
+    const modeSelect = document.getElementById('rr-cfg-mode');
+    const precisionBox = document.getElementById('rr-cfg-precision-box');
+    if (modeSelect && precisionBox) {
+        modeSelect.onchange = () => {
+            precisionBox.style.display = (modeSelect.value === 'precision') ? 'block' : 'none';
+        };
+    }
 
     if (configSave) {
         configSave.onclick = () => {
@@ -115,6 +124,8 @@ function initRRBridge() {
                 speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
                 earlyNeutralRate: getVal('rr-cfg-early-coef', 5),
                 lateNeutralGrace: getVal('rr-cfg-late-grace', 60),
+                corridorTolerance: getVal('rr-cfg-corridor-dist', 20),
+                corridorCoef: parseFloat(document.getElementById('rr-cfg-corridor-coef').value) || 1,
                 wptTolerance: 100,
                 wptPenalties: {
                     default: getVal('rr-cfg-wp-def', 900),

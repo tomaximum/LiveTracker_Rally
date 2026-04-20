@@ -43,6 +43,13 @@ class ScoringEngine {
         let neutralStartPt = null;
         let neutralWpt = null;
 
+        // Variables pour le mode Précision (Corridor)
+        let isPrecisionMode = (this.config.mode === 'precision');
+        let idealPath = this.roadbook.trackPoints || this.roadbook.route || [];
+        let lastIdealIdx = 0;
+        let corridorTol = this.config.corridorTolerance || 20;
+        let corridorCoef = this.config.corridorCoef || 1;
+
         let dssTime = null;
         let assTime = null;
 
@@ -147,14 +154,11 @@ class ScoringEngine {
             let v = GeoTools.speed(p_prev, p_curr);
             let limit = currentSpeedLimit;
 
-            // Pénalité proportionnelle : (km/h en trop) × (durée en s) × coef
-            // coef = 1 → 1 km/h de dépassement pendant 1s = 1s de pénalité
             if (limit && v > limit) {
                 let over = v - limit;
                 let dtSeconds = (p_curr.time - p_prev.time) / 1000;
                 let pen = over * dtSeconds * this.config.speedCoef;
 
-                // Optimisation: On regroupe les pénalités en segments continus sinon on a 10,000 pénalités
                 let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];
                 if (lastPen && lastPen.type === 'OVERSPEED' && lastPen.limit === limit && (p_curr.time - lastPen.lastTime) < 5000) {
                      lastPen.cost += pen;
@@ -175,6 +179,51 @@ class ScoringEngine {
                         startTime: p_prev.time,
                         lastTime: p_curr.time
                     });
+                }
+            }
+
+            // 3. Corridor / Off-track checking (Mode Précision)
+            if (isPrecisionMode && idealPath.length >= 2) {
+                // On cherche le segment le plus proche dans une fenêtre glissante autour de la dernière position connue
+                let minDist = Infinity;
+                let bestIdx = lastIdealIdx;
+
+                // Fenêtre : on regarde un peu en arrière (au cas où on recule) et pas mal en avant
+                let searchStart = Math.max(0, lastIdealIdx - 10);
+                let searchEnd = Math.min(idealPath.length - 1, lastIdealIdx + 100);
+
+                for (let k = searchStart; k < searchEnd; k++) {
+                    let d = GeoTools.pointToSegmentDistance(p_curr, idealPath[k], idealPath[k+1]);
+                    if (d < minDist) {
+                        minDist = d;
+                        bestIdx = k;
+                    }
+                }
+                lastIdealIdx = bestIdx;
+
+                if (minDist > corridorTol) {
+                    let dtSeconds = (p_curr.time - p_prev.time) / 1000;
+                    let pen = dtSeconds * corridorCoef;
+
+                    // Regroupement identique à la survitesse
+                    let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];
+                    if (lastPen && lastPen.type === 'OFFTRACK' && (p_curr.time - lastPen.lastTime) < 5000) {
+                        lastPen.cost += pen;
+                        lastPen.maxDist = Math.max(lastPen.maxDist || 0, Math.round(minDist));
+                        lastPen.durationSeconds += dtSeconds;
+                        lastPen.lastTime = p_curr.time;
+                        lastPen.desc = `Sortie de tracé continue (Écart max ${lastPen.maxDist}m, tolérance ${corridorTol}m)`;
+                    } else {
+                        result.penaltiesBox.push({
+                            type: 'OFFTRACK',
+                            desc: `Sortie de tracé (${Math.round(minDist)}m > ${corridorTol}m)`,
+                            cost: pen,
+                            maxDist: Math.round(minDist),
+                            durationSeconds: dtSeconds,
+                            startTime: p_prev.time,
+                            lastTime: p_curr.time
+                        });
+                    }
                 }
             }
 
@@ -214,8 +263,11 @@ class ScoringEngine {
         if (this.config.mode === 'regularity') {
             // En régularité, le score est la somme des pénalités (temps + waypoints + survitesse)
             result.score = result.timePenalty + result.totalPenalties;
+        } else if (this.config.mode === 'precision') {
+            // En mode Précision, on garde le temps net + toutes les pénalités (hors-piste inclus)
+            result.score = result.netTime + result.totalPenalties;
         } else {
-            // En Time Attack, le score est le temps net + pénalités
+            // En Time Attack (Scratch), le score est le temps net + pénalités
             result.score = result.netTime + result.totalPenalties;
         }
 
