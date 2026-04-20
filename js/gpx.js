@@ -100,6 +100,12 @@ function parseWaypoints(xmlText) {
                 else if (symMatch) type = symMatch[1].trim(); 
                 
                 const orMappings = {
+                    'dn': 'Début Neutra (DN)',
+                    'fn': 'Fin Neutra (FN)',
+                    'dt': 'Début Transfert (DT)',
+                    'ft': 'Fin Transfert (FT)',
+                    'neutralization': 'Début Neutra (DN)',
+                    'timecontrol': 'Début Transfert (DT)',
                     'dz': 'Début Zone (DZ)',
                     'fz': 'Fin Zone (FZ)',
                     'wpv': 'WP Validation (WPV)',

@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-2.8.0--stable-blue)
+![Version](https://img.shields.io/badge/version-2.8.1--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-orange)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -8,8 +8,8 @@
 
 ---
 
-## ✨ Points forts (v2.8.0)
-La version **v2.8.0** renforce la sécurité des transferts de données et améliore l'interface :
+## ✨ Points forts (v2.8.1)
+La version **v2.8.1** renforce la sécurité des transferts de données et améliore l'interface :
 - **Sécurité Télémétrie** : Ajout d'une clé API secrète pour protéger votre compte Google contre les abus.
 - **Mobile First** : Panneau escamotable et prise en compte des "Safe Areas" (Otb/Encoche) sur les écrans tactiles.
 - **Persistance Live** : Vos traces pilotes sont sauvegardées localement dans le navigateur (IndexedDB). Un rafraîchissement ou une coupure réseau ne fait plus perdre l'historique !

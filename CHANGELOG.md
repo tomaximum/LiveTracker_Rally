@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.8.1] - 2026-04-20 (Fix Noms sur la Carte)
+- **LiveTrack / GPX Map** : Le moteur qui dessinait la carte (différent de celui qui calcule les scores) accusait un retard sur les nouveaux types de waypoints. Les "Débuts/Fins de Transferts et Neutralisations" s'affichent désormais correctement en toutes lettres sur la trace sans être masqués par les zones de vitesse optionnelles (DZ).
+
 ## [2.8.0] - 2026-04-20 (Désactivation Pénalités & Defaults)
 - **Scoring** : L'assignation d'un coefficient d'avance de "0" désactive désormais complètement les pénalités sur les zones de Neutralisation ou de Transfert (Avance ET Retard annulés).
 - **Interface** : Le coefficient de sortie anticipée par défaut passe à `5s/sec` d'avance (au lieu des 60s/sec de la version précédente).
