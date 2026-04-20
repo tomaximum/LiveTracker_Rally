@@ -1,4 +1,4 @@
-/* ── RallyRanking V2.9.0.001 Bridge ─────────────────────────────────────────────── */
+/* ── RallyRanking V2.9.0.002 Bridge ─────────────────────────────────────────────── */
 window.rrState = {
     roadbook: null,
     pilots: [],
