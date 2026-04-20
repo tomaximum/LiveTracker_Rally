@@ -113,7 +113,7 @@ function parseWaypoints(xmlText) {
                     'wps': 'WP Sécurité (WPS)',
                     'wpc': 'WP Contrôle (WPC)',
                     'dss': 'Début Spéciale (DSS)',
-                    'ass': 'Assistance (ASS)'
+                    'ass': 'Arrivée Spéciale (ASS)'
                 };
 
                 for (const [tag, label] of Object.entries(orMappings)) {

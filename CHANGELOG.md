@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.8.2] - 2026-04-20 (Fix Traduction ASS)
+- **LiveTrack / GPX Map** : Correction cosmétique sur la carte ; l'acronyme historique `ASS` y est désormais correctement traduit par "Arrivée Spéciale" au lieu du trompeur "Assistance".
+
 ## [2.8.1] - 2026-04-20 (Fix Noms sur la Carte)
 - **LiveTrack / GPX Map** : Le moteur qui dessinait la carte (différent de celui qui calcule les scores) accusait un retard sur les nouveaux types de waypoints. Les "Débuts/Fins de Transferts et Neutralisations" s'affichent désormais correctement en toutes lettres sur la trace sans être masqués par les zones de vitesse optionnelles (DZ).
 
