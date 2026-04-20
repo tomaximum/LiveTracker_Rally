@@ -215,6 +215,16 @@ class GPXParser {
           if (open === null) open = Math.max(800, clear || 0);
           if (clear === null) clear = 90;
 
+          // 5. Auto-promotion des zones de vitesse vers des Départs de Neutra / Transfert
+          // Si Rally Navigator oublie la balise <openrally:dn> et met juste <openrally:neutralization> + <openrally:dz>
+          if (type !== 'dn' && type !== 'dt' && type !== 'fn' && type !== 'ft') {
+              if (neutralization !== null) {
+                  type = 'dn';
+              } else if (timecontrol !== null) {
+                  type = 'dt';
+              }
+          }
+
           return {
               lat, lon, name, desc, 
               type: type || 'wpm', 

@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.8] - 2026-04-20 (Fix Rally Navigator Auto-Upgrade)
+- **Parseur GPX** : Rattrapage automatique des silences de l'extracteur Rally Navigator. Si un point n'est déclaré NULLE PART comme temps contrôlé (`DN` ou `DT`) mais qu'il contient magiquement une balise `<openrally:neutralization>` (ou une durée `T=`), il est promu en force au rang de `DN` ou `DT`.
+
 ## [2.7.7] - 2026-04-20 (Fix Priorité Balise Symbole)
 - **Parseur GPX** : L'élévation de priorité (`DN`, `DT` > `DZ`) s'applique aussi désormais sur la balise native `<sym>` et `<type>` qui était encore ignorée si l'extension avait défini un type de "zone vitesse" au préalable.
 
