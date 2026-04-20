@@ -189,17 +189,26 @@ class GPXParser {
           }
 
           // 4. Support étendu pour les balises génériques <sym> et <type> (Tripy, MapSource, Garmin)
+          const validTypes = ['dss', 'ass', 'dz', 'fz', 'wpm', 'wpe', 'wps', 'wpc', 'wpv', 'wpp', 'wpn', 'checkpoint', 'dn', 'fn', 'dt', 'ft'];
+          const tPriorityGlobal = { 'dss': 100, 'ass': 100, 'dn': 90, 'dt': 90, 'fn': 90, 'ft': 90, 'checkpoint': 80, 'dz': 50, 'fz': 50 };
+          
           const symNode = wpt.getElementsByTagName("sym")[0];
-          if (!type && symNode && symNode.textContent) {
+          if (symNode && symNode.textContent) {
               let symRaw = symNode.textContent.toLowerCase().trim();
-              const validTypes = ['dss', 'ass', 'dz', 'fz', 'wpm', 'wpe', 'wps', 'wpc', 'wpv', 'wpp', 'wpn', 'checkpoint', 'dn', 'fn', 'dt', 'ft'];
-              if (validTypes.includes(symRaw)) type = symRaw;
+              if (validTypes.includes(symRaw)) {
+                  let curPrio = type ? (tPriorityGlobal[type] || 10) : -1;
+                  let newPrio = tPriorityGlobal[symRaw] || 10;
+                  if (newPrio > curPrio) type = symRaw;
+              }
           }
           const stdTypeNode = wpt.getElementsByTagName("type")[0];
-          if (!type && stdTypeNode && stdTypeNode.textContent) {
+          if (stdTypeNode && stdTypeNode.textContent) {
               let typeRaw = stdTypeNode.textContent.toLowerCase().trim();
-              const validTypes = ['dss', 'ass', 'dz', 'fz', 'wpm', 'wpe', 'wps', 'wpc', 'wpv', 'wpp', 'wpn', 'checkpoint', 'dn', 'fn', 'dt', 'ft'];
-              if (validTypes.includes(typeRaw)) type = typeRaw;
+              if (validTypes.includes(typeRaw)) {
+                  let curPrio = type ? (tPriorityGlobal[type] || 10) : -1;
+                  let newPrio = tPriorityGlobal[typeRaw] || 10;
+                  if (newPrio > curPrio) type = typeRaw;
+              }
           }
 
           // Defaults en cas de valeur partielle

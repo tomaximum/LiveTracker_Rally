@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.7] - 2026-04-20 (Fix Priorité Balise Symbole)
+- **Parseur GPX** : L'élévation de priorité (`DN`, `DT` > `DZ`) s'applique aussi désormais sur la balise native `<sym>` et `<type>` qui était encore ignorée si l'extension avait défini un type de "zone vitesse" au préalable.
+
 ## [2.7.6] - 2026-04-20 (Fix Priorité des Points)
 - **Parseur GPX** : Un waypoint comportant de multiples attributs OpenRally (ex: `DT` combiné à une zone vitesse `DZ`) n'écrase plus son type principal. Priorité imposée sur les tags de scoring (`DSS`, `ASS`, `DN`, `DT`, `FN`, `FT`) face aux zones de vitesse simples.
 
