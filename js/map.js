@@ -127,7 +127,7 @@ class RallyMap {
                 zIndexOffset: 500
             });
             marker.bindTooltip(
-                `<strong>${w.name || idx + 1}</strong> — ${(w.type || '').toUpperCase()}<br>Open: ${w.open} m / Clear: ${w.clear} m`,
+                `<strong>${w.name || idx + 1}</strong> — ${this._wptLabel(w.type)}<br>Open: ${w.open} m / Clear: ${w.clear} m`,
                 { direction: 'top', offset: [0, -10] }
             );
             marker.addTo(this.roadbookLayer);
@@ -389,5 +389,27 @@ class RallyMap {
             dt: '#BDC3C7', ft: '#BDC3C7'
         };
         return colors[(type || '').toLowerCase()] || '#3498DB';
+    }
+
+    _wptLabel(type) {
+        // v2.9.0.009: Labels lisibles pour chaque type de waypoint
+        const labels = {
+            dss: 'Début de spéciale (DSS)',
+            ass: 'Arrêt de spéciale (ASS)',
+            dz:  'Début de zone (DZ)',
+            fz:  'Fin de zone (FZ)',
+            wpm: 'WP Obligatoire',
+            wpe: 'WP Obligatoire',
+            wpv: 'WP Vitesse',
+            wps: 'WP Sécurité',
+            wpn: 'WP Neutre',
+            wpc: 'WP Caché',     // ⚠️ caché, pas "contrôle"
+            checkpoint: 'WP Caché',
+            dn:  'Début neutralisation',
+            fn:  'Fin neutralisation',
+            dt:  'Début transfert',
+            ft:  'Fin transfert'
+        };
+        return labels[(type || '').toLowerCase()] || (type || '').toUpperCase();
     }
 }
