@@ -211,6 +211,7 @@ class ScoringEngine {
                     }
                 }
                 lastIdealIdx = bestIdx;
+                p_curr.offTrackDist = minDist; // v2.9.0.003: Store for map rendering
 
                 if (minDist > corridorTol) {
                     let dtSeconds = (p_curr.time - p_prev.time) / 1000;

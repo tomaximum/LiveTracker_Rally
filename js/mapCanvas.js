@@ -117,14 +117,34 @@ class MapCanvas {
 
             // Surcouche rouge plus épaisse pour les segments en survitesse
             if (overspeedIntervals.length > 0) {
-                ctx.lineWidth = 8 * S; // Plus épais (était 6)
-                ctx.strokeStyle = '#E74C3C'; // Rouge (était orange)
+                ctx.lineWidth = 8 * S;
+                ctx.strokeStyle = '#E74C3C'; // Rouge
                 ctx.globalAlpha = 0.85;
                 for (let i = 1; i < tracks.length; i++) {
                     const p = tracks[i];
                     const pPrev = tracks[i - 1];
                     const isOver = overspeedIntervals.some(iv => p.time >= iv.start && p.time <= iv.end);
                     if (isOver) {
+                        ctx.beginPath();
+                        ctx.moveTo(toX(pPrev.lon), toY(pPrev.lat));
+                        ctx.lineTo(toX(p.lon), toY(p.lat));
+                        ctx.stroke();
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // v2.9.0.003: Surcouche orange pour les écarts hors-piste
+            const tol = (window.rrState && window.rrState.settings && window.rrState.settings.corridorTolerance) || 20;
+            const hasOffTrack = tracks.some(p => p.offTrackDist > tol);
+            if (hasOffTrack) {
+                ctx.lineWidth = 6 * S;
+                ctx.strokeStyle = '#f39c12'; // Orange
+                ctx.globalAlpha = 0.8;
+                for (let i = 1; i < tracks.length; i++) {
+                    const p = tracks[i];
+                    const pPrev = tracks[i-1];
+                    if (p.offTrackDist > tol) {
                         ctx.beginPath();
                         ctx.moveTo(toX(pPrev.lon), toY(pPrev.lat));
                         ctx.lineTo(toX(p.lon), toY(p.lat));
@@ -222,6 +242,7 @@ class MapCanvas {
             { color: '#4A90D9', label: 'Roadbook', dash: true },
             { color: '#222222', label: 'Trace concurrent' },
             { color: '#E74C3C', label: 'Survitesse', thick: true },
+            { color: '#f39c12', label: 'Sortie de tracé', thick: true },
             { color: '#00B894', label: 'WP validé', circle: true },
             { color: '#D63031', label: 'WP raté', circle: true },
             { color: '#2ECC71', label: 'DSS', triangle: true },

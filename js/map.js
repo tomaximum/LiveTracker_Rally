@@ -183,6 +183,36 @@ class RallyMap {
             });
             polyline.bindTooltip(name, { sticky: true });
             polyline.addTo(group);
+
+            // v2.9.0.003: Overlayer pour le hors-piste (Orange)
+            const tol = (window.rrState.settings && window.rrState.settings.corridorTolerance) || 20;
+            const offTrackSegments = [];
+            let currentSegment = [];
+
+            for (let i = 0; i < tracks.length; i++) {
+                const p = tracks[i];
+                if (p.offTrackDist > tol) {
+                    currentSegment.push([p.lat, p.lon]);
+                } else {
+                    if (currentSegment.length > 1) {
+                        offTrackSegments.push(currentSegment);
+                    }
+                    currentSegment = [];
+                    // On ajoute le point actuel pour commencer le prochain segment (pour la continuité) si besoin, 
+                    // mais ici on veut juste marquer la zone "hors" donc on commence au point suivant.
+                }
+            }
+            if (currentSegment.length > 1) offTrackSegments.push(currentSegment);
+
+            offTrackSegments.forEach(seg => {
+                L.polyline(seg, {
+                    color: '#f39c12', // Orange
+                    weight: 6,
+                    opacity: 0.9,
+                    lineJoin: 'round',
+                    lineCap: 'round'
+                }).addTo(group);
+            });
         }
 
         if (wpLog) {
