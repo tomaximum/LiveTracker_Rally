@@ -191,10 +191,6 @@ class RallyMap {
             polyline.addTo(group);
 
             // v2.9.0.003: Overlayer pour le hors-piste (Orange)
-            const tol = (window.rrState.settings && window.rrState.settings.corridorTolerance) || 20;
-            const offTrackSegments = [];
-            let currentSegment = [];
-
             let offTrackSegments = [];
             let currentSeg = [];
             let lastOnTrackPoint = null;
@@ -205,15 +201,12 @@ class RallyMap {
                 const isActive = (p.racingActive !== false); // v2.9.0.006
 
                 if (isActive && isOffLimit) {
-                    // Si on vient de passer hors-piste, on inclut le dernier point "on-track" 
-                    // pour assurer la continuité visuelle de la ligne.
                     if (currentSeg.length === 0 && lastOnTrackPoint) {
                         currentSeg.push(lastOnTrackPoint);
                     }
                     currentSeg.push([p.lat, p.lon]);
                 } else {
                     if (currentSeg.length > 1) {
-                        // On inclut le point actuel (qui est "on-track") pour fermer le segment orange
                         currentSeg.push([p.lat, p.lon]);
                         offTrackSegments.push(currentSeg);
                     }
