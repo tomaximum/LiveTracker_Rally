@@ -81,13 +81,15 @@ class ScoringEngine {
             let lookAheadLimit = Math.min(wpts.length, nextWptIdx + 4);
             for (let j = nextWptIdx; j < lookAheadLimit; j++) {
                 let w = wpts[j];
-                // On utilise la distance au segment [p_prev, p_curr] 
                 let d = GeoTools.pointToSegmentDistance(w, p_prev, p_curr);
                 
                 if (d <= w.clear) {
                     // Validé !
                     w.validationDist = d;
                     w.validationTime = p_curr.time;
+
+                    // v2.9.0.006: Le premier waypoint validé active le scoring de course
+                    result.racingStarted = true;
 
                     // Les WPT précédents sont ratés
                     for (let k = nextWptIdx; k < j; k++) {
@@ -131,7 +133,6 @@ class ScoringEngine {
                             let durS = durMs / 1000;
                             result.neutralizedTime += durS;
 
-                            // Check time window
                             let allowedMins = neutralWpt.timecontrol || neutralWpt.neutralization;
                             if (allowedMins) {
                                 let allowedS = allowedMins * 60;
@@ -139,7 +140,6 @@ class ScoringEngine {
                                 let late = durS - (allowedS + lateGrace);
                                 let early = allowedS - durS;
                                 let earlyRate = (this.config.earlyNeutralRate !== undefined) ? this.config.earlyNeutralRate : 5;
-                                
                                 if (earlyRate > 0) {
                                     if (early > 0) {
                                         result.penaltiesBox.push({
@@ -169,7 +169,6 @@ class ScoringEngine {
             // 2. Speed checking
             let v = GeoTools.speed(p_prev, p_curr);
             let limit = currentSpeedLimit;
-
             if (limit && v > limit) {
                 let over = v - limit;
                 let dtSeconds = (p_curr.time - p_prev.time) / 1000;
@@ -201,8 +200,7 @@ class ScoringEngine {
                 let minDist = Infinity;
                 let bestIdx = lastIdealIdx;
 
-                // Fenêtre locale : on regarde un peu en arrière et pas mal en avant (v2.9.0.005 : 500 pts)
-                let searchStart = Math.max(0, lastIdealIdx - 10);
+                let searchStart = Math.max(0, lastIdealIdx - 100); // v2.9.0.006 : Plus de look-back
                 let searchEnd = Math.min(idealPath.length - 1, lastIdealIdx + 500);
 
                 for (let k = searchStart; k < searchEnd; k++) {
@@ -213,7 +211,6 @@ class ScoringEngine {
                     }
                 }
 
-                // v2.9.0.005 : Recalage automatique (Resync) si l'écart est massif (> 100m)
                 if (minDist > 100) {
                     for (let k = 0; k < idealPath.length - 1; k++) {
                         let d = GeoTools.pointToSegmentDistance(p_curr, idealPath[k], idealPath[k+1]);
@@ -226,8 +223,10 @@ class ScoringEngine {
 
                 lastIdealIdx = bestIdx;
                 p_curr.offTrackDist = minDist;
+                p_curr.racingActive = result.racingStarted; // v2.9.0.006: Signal pour le rendu carte
 
-                if (minDist > corridorTol) {
+                // On ne pénalise que si la course a commencé
+                if (result.racingStarted && minDist > corridorTol) {
                     let dtSeconds = (p_curr.time - p_prev.time) / 1000;
                     let pen = dtSeconds * corridorCoef;
                     let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];

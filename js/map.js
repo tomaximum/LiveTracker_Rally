@@ -195,28 +195,40 @@ class RallyMap {
             const offTrackSegments = [];
             let currentSegment = [];
 
-            for (let i = 0; i < tracks.length; i++) {
-                const p = tracks[i];
-                if (p.offTrackDist > tol) {
-                    currentSegment.push([p.lat, p.lon]);
-                } else {
-                    if (currentSegment.length > 1) {
-                        offTrackSegments.push(currentSegment);
+            let offTrackSegments = [];
+            let currentSeg = [];
+            let lastOnTrackPoint = null;
+
+            tracks.forEach((p, idx) => {
+                const tol = (window.rrState.settings && window.rrState.settings.corridorTolerance) || 20;
+                const isOffLimit = (p.offTrackDist > tol);
+                const isActive = (p.racingActive !== false); // v2.9.0.006
+
+                if (isActive && isOffLimit) {
+                    // Si on vient de passer hors-piste, on inclut le dernier point "on-track" 
+                    // pour assurer la continuité visuelle de la ligne.
+                    if (currentSeg.length === 0 && lastOnTrackPoint) {
+                        currentSeg.push(lastOnTrackPoint);
                     }
-                    currentSegment = [];
-                    // On ajoute le point actuel pour commencer le prochain segment (pour la continuité) si besoin, 
-                    // mais ici on veut juste marquer la zone "hors" donc on commence au point suivant.
+                    currentSeg.push([p.lat, p.lon]);
+                } else {
+                    if (currentSeg.length > 1) {
+                        // On inclut le point actuel (qui est "on-track") pour fermer le segment orange
+                        currentSeg.push([p.lat, p.lon]);
+                        offTrackSegments.push(currentSeg);
+                    }
+                    currentSeg = [];
                 }
-            }
-            if (currentSegment.length > 1) offTrackSegments.push(currentSegment);
+                lastOnTrackPoint = [p.lat, p.lon];
+            });
+            if (currentSeg.length > 1) offTrackSegments.push(currentSeg);
 
             offTrackSegments.forEach(seg => {
                 L.polyline(seg, {
                     color: '#f39c12', // Orange
                     weight: 6,
-                    opacity: 0.9,
-                    lineJoin: 'round',
-                    lineCap: 'round'
+                    opacity: 0.8,
+                    dashArray: '10, 5' // Optionnel: pointillés pour distinguer
                 }).addTo(group);
             });
         }
