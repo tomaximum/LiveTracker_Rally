@@ -1,6 +1,6 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
-## [2.9.0.003] - 2026-04-20 (Mode Précision Fix)
+## [2.9.0.004] - 2026-04-20 (Mode Précision Fix)
 - **Scoring Engine** : Correction d'un bug majeur empêchant l'activation du corridor.
 - **Scoring Engine** : Ajout d'un fallback intelligent. Si le GPX du Roadbook ne contient pas de trace (`<trk>`), le moteur relie désormais les waypoints pour créer le corridor.
 - **Interface** : Correction du label du mode dans le tableau des résultats (`Temps Scratch` vs `Précision Rally`).

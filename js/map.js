@@ -181,7 +181,13 @@ class RallyMap {
                 lineJoin: 'round',
                 lineCap: 'round'
             });
-            polyline.bindTooltip(name, { sticky: true });
+
+            // v2.9.0.004 : Tooltip avec écart max
+            const maxOffTrack = Math.round(Math.max(...tracks.map(p => p.offTrackDist || 0)));
+            let tooltipContent = `<strong>${name}</strong>`;
+            if (maxOffTrack > 0) tooltipContent += `<br/>Écart max : ${maxOffTrack}m`;
+            
+            polyline.bindTooltip(tooltipContent, { sticky: true });
             polyline.addTo(group);
 
             // v2.9.0.003: Overlayer pour le hors-piste (Orange)

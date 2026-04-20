@@ -53,12 +53,19 @@ class ScoringEngine {
             idealPath = this.roadbook.waypoints;
         }
 
+        // v2.9.0.004: Simplification du tracé idéal (RDP) pour éliminer le bruit (segments trop courts)
+        if (isPrecisionMode && idealPath.length > 200) {
+            const beforeLen = idealPath.length;
+            idealPath = GeoTools.simplifyPath(idealPath, 5); // 5 mètres de tolérance RDP
+            console.log(`[ScoringEngine] Roadbook simplifié par RDP : ${beforeLen} pts -> ${idealPath.length} pts`);
+        }
+
         let lastIdealIdx = 0;
         let corridorTol = this.config.corridorTolerance || 20;
         let corridorCoef = this.config.corridorCoef || 1;
 
         if (isPrecisionMode) {
-            console.log(`[ScoringEngine] Mode PRÉCISION actif. Corridor: ${corridorTol}m, Coef: ${corridorCoef}, PathPts: ${idealPath.length}`);
+            console.log(`[ScoringEngine] Mode PRÉCISION / Corridor actif. Tolérance: ${corridorTol}m, Coef: ${corridorCoef}`);
         }
 
         let dssTime = null;
@@ -68,14 +75,13 @@ class ScoringEngine {
             let p_curr = tracks[i];
             
             // Advance distance
-            result.distanceTraveled += GeoTools.distance(p_prev.lat, p_prev.lon, p_curr.lat, p_curr.lon);
+            result.distanceTraveled += GeoTools.distance(p_prev.lat, GeoTools._getLon(p_prev), p_curr.lat, GeoTools._getLon(p_curr));
 
-            // 1. Waypoint Validation Validation (Look ahead for missed wpts)
+            // 1. Waypoint Validation (Look ahead for missed wpts)
             let lookAheadLimit = Math.min(wpts.length, nextWptIdx + 4);
             for (let j = nextWptIdx; j < lookAheadLimit; j++) {
                 let w = wpts[j];
                 // On utilise la distance au segment [p_prev, p_curr] 
-                // pour ne pas rater les WPTs traversés entre deux points d'échantillonnage GPS espacés.
                 let d = GeoTools.pointToSegmentDistance(w, p_prev, p_curr);
                 
                 if (d <= w.clear) {
@@ -109,7 +115,7 @@ class ScoringEngine {
                     if (w.type === 'dz' || w.type === 'fz') {
                          inDZ = (w.type === 'dz');
                          if (inDZ && w.speedLimit) currentSpeedLimit = w.speedLimit;
-                         if (!inDZ) currentSpeedLimit = this.config.speedLimit; // Revert to global
+                         if (!inDZ) currentSpeedLimit = this.config.speedLimit;
                     }
 
                     if (w.type === 'dn' || w.type === 'dt') {
@@ -132,7 +138,6 @@ class ScoringEngine {
                                 let lateGrace = (this.config.lateNeutralGrace !== undefined) ? this.config.lateNeutralGrace : 60;
                                 let late = durS - (allowedS + lateGrace);
                                 let early = allowedS - durS;
-
                                 let earlyRate = (this.config.earlyNeutralRate !== undefined) ? this.config.earlyNeutralRate : 5;
                                 
                                 if (earlyRate > 0) {
@@ -153,13 +158,13 @@ class ScoringEngine {
                             }
                         }
                         inNeutral = false;
-                        currentSpeedLimit = this.config.speedLimit; // Revert to global
+                        currentSpeedLimit = this.config.speedLimit;
                     }
 
                     nextWptIdx = j + 1;
-                    break; // Move to next track point
+                    break;
                 }
-            } // end WPT loop
+            }
 
             // 2. Speed checking
             let v = GeoTools.speed(p_prev, p_curr);
@@ -169,7 +174,6 @@ class ScoringEngine {
                 let over = v - limit;
                 let dtSeconds = (p_curr.time - p_prev.time) / 1000;
                 let pen = over * dtSeconds * this.config.speedCoef;
-
                 let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];
                 if (lastPen && lastPen.type === 'OVERSPEED' && lastPen.limit === limit && (p_curr.time - lastPen.lastTime) < 5000) {
                      lastPen.cost += pen;
@@ -177,7 +181,6 @@ class ScoringEngine {
                      lastPen.maxSpeed = Math.max(lastPen.maxSpeed || 0, Math.round(v));
                      lastPen.durationSeconds += dtSeconds;
                      lastPen.lastTime = p_curr.time;
-                     lastPen.desc = `Survitesse continue (${lastPen.maxSpeed} km/h max, limite ${limit})`;
                 } else {
                      result.penaltiesBox.push({
                         type: 'OVERSPEED',
@@ -195,11 +198,10 @@ class ScoringEngine {
 
             // 3. Corridor / Off-track checking (Mode Précision)
             if (isPrecisionMode && idealPath.length >= 2) {
-                // On cherche le segment le plus proche dans une fenêtre glissante autour de la dernière position connue
                 let minDist = Infinity;
                 let bestIdx = lastIdealIdx;
 
-                // Fenêtre : on regarde un peu en arrière (au cas où on recule) et pas mal en avant
+                // Fenêtre locale : on regarde un peu en arrière et pas mal en avant
                 let searchStart = Math.max(0, lastIdealIdx - 10);
                 let searchEnd = Math.min(idealPath.length - 1, lastIdealIdx + 100);
 
@@ -210,14 +212,25 @@ class ScoringEngine {
                         bestIdx = k;
                     }
                 }
+
+                // v2.9.0.004 : Recalage automatique (Resync) si l'écart est massif (> 500m)
+                // ou si on semble être arrivé au bout de la fenêtre sans trouver de point proche
+                if (minDist > 500) {
+                    for (let k = 0; k < idealPath.length - 1; k++) {
+                        let d = GeoTools.pointToSegmentDistance(p_curr, idealPath[k], idealPath[k+1]);
+                        if (d < minDist) {
+                            minDist = d;
+                            bestIdx = k;
+                        }
+                    }
+                }
+
                 lastIdealIdx = bestIdx;
-                p_curr.offTrackDist = minDist; // v2.9.0.003: Store for map rendering
+                p_curr.offTrackDist = minDist;
 
                 if (minDist > corridorTol) {
                     let dtSeconds = (p_curr.time - p_prev.time) / 1000;
                     let pen = dtSeconds * corridorCoef;
-
-                    // Regroupement identique à la survitesse
                     let lastPen = result.penaltiesBox[result.penaltiesBox.length - 1];
                     if (lastPen && lastPen.type === 'OFFTRACK' && (p_curr.time - lastPen.lastTime) < 5000) {
                         lastPen.cost += pen;

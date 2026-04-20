@@ -5,6 +5,9 @@ window.haversineDistance = function(p1, p2) {
     return GeoTools.distance(p1.lat, p1.lng || p1.lon, p2.lat, p2.lng || p2.lon);
 };
 class GeoTools {
+    static _getLon(p) { return p.lon !== undefined ? p.lon : p.lng; }
+    static _getLat(p) { return p.lat; }
+
     /**
      * Calcule la distance en mètres entre deux coordonnées géographiques
      * Formule de Haversine
@@ -26,34 +29,27 @@ class GeoTools {
 
     /**
      * Calcule la vitesse en km/h entre deux points horaires
-     * pt1 et pt2 doivent avoir {lat, lon, time} (time en ms)
      */
     static speed(pt1, pt2) {
         if (!pt1.time || !pt2.time || pt1.time === pt2.time) return 0;
-        
-        const d = this.distance(pt1.lat, pt1.lon, pt2.lat, pt2.lon); // mètres
-        const t = Math.abs(pt2.time - pt1.time) / 1000; // secondes
-        
-        return (d / t) * 3.6; // m/s vers km/h
+        const d = this.distance(pt1.lat, this._getLon(pt1), pt2.lat, this._getLon(pt2));
+        const t = Math.abs(pt2.time - pt1.time) / 1000;
+        return (d / t) * 3.6;
     }
 
     /**
      * Distance minimale d'un point à un segment géospatial
-     * (Approximation sur plan local pour de petites distances < 1km)
-     * Utile pour vérifier les écarts à la trajectoire (roadbook pt-pt).
      */
     static pointToSegmentDistance(p, a, b) {
-        // En mètres, on peut approximer la terre comme plate sur un très petit bout
-        // 1 degré lat = 111132 m, 1 degré lon = 111132 * cos(lat) m
         const lat2m = 111132;
         const lon2m = 111132 * Math.cos(p.lat * Math.PI / 180);
 
-        const px = p.lon * lon2m, py = p.lat * lat2m;
-        const ax = a.lon * lon2m, ay = a.lat * lat2m;
-        const bx = b.lon * lon2m, by = b.lat * lat2m;
+        const px = this._getLon(p) * lon2m, py = p.lat * lat2m;
+        const ax = this._getLon(a) * lon2m, ay = a.lat * lat2m;
+        const bx = this._getLon(b) * lon2m, by = b.lat * lat2m;
 
         const l2 = (ax - bx) ** 2 + (ay - by) ** 2;
-        if (l2 === 0) return this.distance(p.lat, p.lon, a.lat, a.lon); // A = B
+        if (l2 === 0) return this.distance(p.lat, this._getLon(p), a.lat, this._getLon(a));
 
         let t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2;
         t = Math.max(0, Math.min(1, t));
@@ -61,8 +57,34 @@ class GeoTools {
         const projx = ax + t * (bx - ax);
         const projy = ay + t * (by - ay);
 
-        // Reconvertir en lat/lon pour réutiliser haversine parfait :
-        return this.distance(p.lat, p.lon, projy / lat2m, projx / lon2m);
+        return this.distance(p.lat, this._getLon(p), projy / lat2m, projx / lon2m);
+    }
+
+    /**
+     * Algorithme de Ramer-Douglas-Peucker pour simplifier un tracé
+     */
+    static simplifyPath(points, epsilon) {
+        if (points.length <= 2) return points;
+
+        let dmax = 0;
+        let index = 0;
+        const end = points.length - 1;
+
+        for (let i = 1; i < end; i++) {
+            const d = this.pointToSegmentDistance(points[i], points[0], points[end]);
+            if (d > dmax) {
+                index = i;
+                dmax = d;
+            }
+        }
+
+        if (dmax > epsilon) {
+            const res1 = this.simplifyPath(points.slice(0, index + 1), epsilon);
+            const res2 = this.simplifyPath(points.slice(index), epsilon);
+            return res1.slice(0, res1.length - 1).concat(res2);
+        } else {
+            return [points[0], points[end]];
+        }
     }
 }
 
