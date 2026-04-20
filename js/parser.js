@@ -139,6 +139,7 @@ class GPXParser {
                       if (child.hasAttribute('open')) openRaw = parseFloat(child.getAttribute('open'));
                       if (child.hasAttribute('clear')) clearRaw = parseFloat(child.getAttribute('clear'));
                       if (child.hasAttribute('speed')) speedLimit = parseFloat(child.getAttribute('speed'));
+                      if (child.hasAttribute('time')) timecontrol = parseFloat(child.getAttribute('time'));
                   }
 
                   // 1.b Support aussi de la structure enfant (<openrally:open>800</openrally:open>)
@@ -177,6 +178,20 @@ class GPXParser {
           let isScoringWpt = true;
           if (open === null && clear === null) {
               isScoringWpt = false;
+          }
+
+          // 4. Support étendu pour les balises génériques <sym> et <type> (Tripy, MapSource, Garmin)
+          const symNode = wpt.getElementsByTagName("sym")[0];
+          if (!type && symNode && symNode.textContent) {
+              let symRaw = symNode.textContent.toLowerCase().trim();
+              const validTypes = ['dss', 'ass', 'dz', 'fz', 'wpm', 'wpe', 'wps', 'wpc', 'wpv', 'wpp', 'wpn', 'checkpoint', 'dn', 'fn', 'dt', 'ft'];
+              if (validTypes.includes(symRaw)) type = symRaw;
+          }
+          const stdTypeNode = wpt.getElementsByTagName("type")[0];
+          if (!type && stdTypeNode && stdTypeNode.textContent) {
+              let typeRaw = stdTypeNode.textContent.toLowerCase().trim();
+              const validTypes = ['dss', 'ass', 'dz', 'fz', 'wpm', 'wpe', 'wps', 'wpc', 'wpv', 'wpp', 'wpn', 'checkpoint', 'dn', 'fn', 'dt', 'ft'];
+              if (validTypes.includes(typeRaw)) type = typeRaw;
           }
 
           // Defaults en cas de valeur partielle

@@ -1,5 +1,9 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.4] - 2026-04-20 (Hotfix GPX Parser)
+- **Parseur GPX** : Prise en charge de la durée de neutralisation présente dans l'attribut `time=` au sein des balises `<openrally:dt>` (export Rally Navigator).
+- **Rétrocompatibilité** : Prise en charge du type de waypoint défini dans la balise `<sym>` ou `<type>` (export Garmin / Tripy / RN).
+
 ## [2.7.3] - 2026-04-20 (Scoring Neutra)
 - **Scoring Neutralisation** : Ajout de pénalités paramétrables pour la sortie des zones de neutralisation ou de transfert.
 - **Parseur GPX** : Support étendu pour extraire le temps d'une neutra directement via `T=` ou `N=` depuis la description du waypoint.
