@@ -38,7 +38,7 @@ const state = {
 
 const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbwIZar4aEgYhMg7tAb_Cmpip6odFLEG4jIl12rMIraxAuMRV7-1a9HGKk678qKGn5gY1g/exec';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '2.7.5';
+const APP_VERSION = '2.7.6';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -382,7 +382,7 @@ function updateParticipant(data) {
         participantData.lastMoved = now;
     }
 
-    // Update history based on logInterval (v2.7.5)
+    // Update history based on logInterval (v2.7.6)
     const lastPoint = history.length > 0 ? history[history.length - 1] : null;
     const logInterval = (state.settings.logInterval || 10) * 1000; // to ms
     const timeSinceLastLog = lastPoint ? (now - lastPoint.ts) : Infinity;

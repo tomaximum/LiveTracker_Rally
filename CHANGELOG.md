@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.6] - 2026-04-20 (Fix Priorité des Points)
+- **Parseur GPX** : Un waypoint comportant de multiples attributs OpenRally (ex: `DT` combiné à une zone vitesse `DZ`) n'écrase plus son type principal. Priorité imposée sur les tags de scoring (`DSS`, `ASS`, `DN`, `DT`, `FN`, `FT`) face aux zones de vitesse simples.
+
 ## [2.7.5] - 2026-04-20 (Fix Unité de temps)
 - **Parseur GPX** : L'attribut `time=` envoyé par Rally Navigator est en secondes, le parseur le convertit à présent correctement en minutes pour le moteur interne.
 

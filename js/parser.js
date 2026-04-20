@@ -131,9 +131,17 @@ class GPXParser {
                   if ((prefix === 'openrally' || isKnownType) && (hasProps || isKnownType)) {
                       orNode = child;
                       
-                      // Si on n'a pas encore défini de type fort, on le prend
-                      if (!type || isKnownType) {
-                          type = localName === 'waypointextension' ? null : localName;
+                      // Gestion de priorité pour éviter qu'un "DZ" n'écrase un "DT" ou "DN"
+                      let candidateType = localName === 'waypointextension' ? null : localName;
+                      const tPriority = { 'dss': 100, 'ass': 100, 'dn': 90, 'dt': 90, 'fn': 90, 'ft': 90, 'checkpoint': 80, 'dz': 50, 'fz': 50 };
+                      if (candidateType && isKnownType) {
+                          let curPrio = type ? (tPriority[type] || 10) : -1;
+                          let newPrio = tPriority[candidateType] || 10;
+                          if (newPrio > curPrio) {
+                              type = candidateType;
+                          }
+                      } else if (!type && candidateType) {
+                          type = candidateType;
                       }
                       
                       if (child.hasAttribute('open')) openRaw = parseFloat(child.getAttribute('open'));
