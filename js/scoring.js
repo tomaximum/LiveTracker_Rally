@@ -53,11 +53,11 @@ class ScoringEngine {
             idealPath = this.roadbook.waypoints;
         }
 
-        // v2.9.0.004: Simplification du tracé idéal (RDP) pour éliminer le bruit (segments trop courts)
+        // v2.9.0.005: Simplification ultra-légère (RDP) pour éliminer les doublons sans déformer les courbes
         if (isPrecisionMode && idealPath.length > 200) {
             const beforeLen = idealPath.length;
-            idealPath = GeoTools.simplifyPath(idealPath, 5); // 5 mètres de tolérance RDP
-            console.log(`[ScoringEngine] Roadbook simplifié par RDP : ${beforeLen} pts -> ${idealPath.length} pts`);
+            idealPath = GeoTools.simplifyPath(idealPath, 0.5); // 0.5 mètre de tolérance RDP (v2.9.0.005)
+            console.log(`[ScoringEngine] Roadbook nettoyé par RDP : ${beforeLen} pts -> ${idealPath.length} pts`);
         }
 
         let lastIdealIdx = 0;
@@ -201,9 +201,9 @@ class ScoringEngine {
                 let minDist = Infinity;
                 let bestIdx = lastIdealIdx;
 
-                // Fenêtre locale : on regarde un peu en arrière et pas mal en avant
+                // Fenêtre locale : on regarde un peu en arrière et pas mal en avant (v2.9.0.005 : 500 pts)
                 let searchStart = Math.max(0, lastIdealIdx - 10);
-                let searchEnd = Math.min(idealPath.length - 1, lastIdealIdx + 100);
+                let searchEnd = Math.min(idealPath.length - 1, lastIdealIdx + 500);
 
                 for (let k = searchStart; k < searchEnd; k++) {
                     let d = GeoTools.pointToSegmentDistance(p_curr, idealPath[k], idealPath[k+1]);
@@ -213,9 +213,8 @@ class ScoringEngine {
                     }
                 }
 
-                // v2.9.0.004 : Recalage automatique (Resync) si l'écart est massif (> 500m)
-                // ou si on semble être arrivé au bout de la fenêtre sans trouver de point proche
-                if (minDist > 500) {
+                // v2.9.0.005 : Recalage automatique (Resync) si l'écart est massif (> 100m)
+                if (minDist > 100) {
                     for (let k = 0; k < idealPath.length - 1; k++) {
                         let d = GeoTools.pointToSegmentDistance(p_curr, idealPath[k], idealPath[k+1]);
                         if (d < minDist) {

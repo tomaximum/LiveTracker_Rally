@@ -42,7 +42,9 @@ class GeoTools {
      */
     static pointToSegmentDistance(p, a, b) {
         const lat2m = 111132;
-        const lon2m = 111132 * Math.cos(p.lat * Math.PI / 180);
+        // v2.9.0.005: Utiliser la latitude moyenne du segment [A,B] pour une projection locale plus stable
+        const midLat = (a.lat + b.lat) / 2;
+        const lon2m = 111132 * Math.cos(midLat * Math.PI / 180);
 
         const px = this._getLon(p) * lon2m, py = p.lat * lat2m;
         const ax = this._getLon(a) * lon2m, ay = a.lat * lat2m;
