@@ -139,7 +139,7 @@ class GPXParser {
                       if (child.hasAttribute('open')) openRaw = parseFloat(child.getAttribute('open'));
                       if (child.hasAttribute('clear')) clearRaw = parseFloat(child.getAttribute('clear'));
                       if (child.hasAttribute('speed')) speedLimit = parseFloat(child.getAttribute('speed'));
-                      if (child.hasAttribute('time')) timecontrol = parseFloat(child.getAttribute('time'));
+                      if (child.hasAttribute('time')) timecontrol = parseFloat(child.getAttribute('time')) / 60;
                   }
 
                   // 1.b Support aussi de la structure enfant (<openrally:open>800</openrally:open>)

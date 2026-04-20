@@ -1,5 +1,8 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.5] - 2026-04-20 (Fix Unité de temps)
+- **Parseur GPX** : L'attribut `time=` envoyé par Rally Navigator est en secondes, le parseur le convertit à présent correctement en minutes pour le moteur interne.
+
 ## [2.7.4] - 2026-04-20 (Hotfix GPX Parser)
 - **Parseur GPX** : Prise en charge de la durée de neutralisation présente dans l'attribut `time=` au sein des balises `<openrally:dt>` (export Rally Navigator).
 - **Rétrocompatibilité** : Prise en charge du type de waypoint défini dans la balise `<sym>` ou `<type>` (export Garmin / Tripy / RN).
