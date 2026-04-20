@@ -110,6 +110,8 @@ function initRRBridge() {
                 speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
                 speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
+                earlyNeutralRate: getVal('rr-cfg-early-coef', 60),
+                lateNeutralGrace: getVal('rr-cfg-late-grace', 60),
                 wptTolerance: 100,
                 wptPenalties: {
                     default: getVal('rr-cfg-wp-def', 900),

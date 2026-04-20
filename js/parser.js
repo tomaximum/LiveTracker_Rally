@@ -169,6 +169,8 @@ class GPXParser {
           let open = openRaw !== null ? openRaw : this.extractFromDesc(desc, "O=");
           let clear = clearRaw !== null ? clearRaw : this.extractFromDesc(desc, "C=");
           if (speedLimit === null) speedLimit = this.extractFromDesc(desc, "S=");
+          if (timecontrol === null) timecontrol = this.extractFromDesc(desc, "T=");
+          if (neutralization === null) neutralization = this.extractFromDesc(desc, "N=");
 
           // Détermination de si c'est un waypoint de compétition ou juste une info visuelle
           // Si on n'a ni OPEN ni CLEAR, ce n'est pas un waypoint validable

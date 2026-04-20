@@ -98,6 +98,7 @@ class ScoringEngine {
                         inNeutral = true;
                         neutralStartPt = p_curr;
                         neutralWpt = w;
+                        if (w.speedLimit) currentSpeedLimit = w.speedLimit;
                     }
 
                     if (w.type === 'fn' || w.type === 'ft') {
@@ -107,28 +108,31 @@ class ScoringEngine {
                             result.neutralizedTime += durS;
 
                             // Check time window
-                            let allowedMins = neutralWpt.timecontrol;
+                            let allowedMins = neutralWpt.timecontrol || neutralWpt.neutralization;
                             if (allowedMins) {
                                 let allowedS = allowedMins * 60;
-                                let late = durS - (allowedS + 59);
+                                let lateGrace = (this.config.lateNeutralGrace !== undefined) ? this.config.lateNeutralGrace : 60;
+                                let late = durS - (allowedS + lateGrace);
                                 let early = allowedS - durS;
 
                                 if (early > 0) {
+                                    let earlyRate = (this.config.earlyNeutralRate !== undefined) ? this.config.earlyNeutralRate : 60;
                                     result.penaltiesBox.push({
                                         type: 'EARLY_CH',
                                         desc: `Sortie de neutralisation en avance (${Math.round(early)}s)`,
-                                        cost: Math.round(early) * 60 // 1 minute per second early (stricte)
+                                        cost: Math.round(early) * earlyRate
                                     });
                                 } else if (late > 0) {
                                     result.penaltiesBox.push({
                                         type: 'LATE_CH',
-                                        desc: `Sortie de neutralisation en retard (${Math.round(late)}s)`,
-                                        cost: Math.round(late) // 1s per 1s late
+                                        desc: `Sortie de neutralisation en retard (+${Math.round(late)}s au-delà de la tolérance)`,
+                                        cost: Math.round(late)
                                     });
                                 }
                             }
                         }
                         inNeutral = false;
+                        currentSpeedLimit = this.config.speedLimit; // Revert to global
                     }
 
                     nextWptIdx = j + 1;

@@ -1,5 +1,9 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.7.3] - 2026-04-20 (Scoring Neutra)
+- **Scoring Neutralisation** : Ajout de pénalités paramétrables pour la sortie des zones de neutralisation ou de transfert.
+- **Parseur GPX** : Support étendu pour extraire le temps d'une neutra directement via `T=` ou `N=` depuis la description du waypoint.
+
 ## [2.7.1] - 2026-04-06 (Correctif Traces & Unités)
 - **Correction des Tracés** : Réparation du bug qui exigeait 1km de déplacement pour afficher les pointillés.
 - **Intervalle de Log** : Les traces respectent désormais le paramètre "Intervalle Log position" (ex: 10s).
