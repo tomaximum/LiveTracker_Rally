@@ -1,5 +1,11 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.9.0.001] - 2026-04-20 (Mode Précision Fix)
+- **Scoring Engine** : Correction d'un bug majeur empêchant l'activation du corridor.
+- **Scoring Engine** : Ajout d'un fallback intelligent. Si le GPX du Roadbook ne contient pas de trace (`<trk>`), le moteur relie désormais les waypoints pour créer le corridor.
+- **Interface** : Correction du label du mode dans le tableau des résultats (`Temps Scratch` vs `Précision Rally`).
+- **Versioning** : Passage au versioning incrémental (`X.Y.Z.NNN`) pour garantir le rafraîchissement du cache navigateur.
+
 ## [2.8.2] - 2026-04-20 (Fix Traduction ASS)
 - **LiveTrack / GPX Map** : Correction cosmétique sur la carte ; l'acronyme historique `ASS` y est désormais correctement traduit par "Arrivée Spéciale" au lieu du trompeur "Assistance".
 

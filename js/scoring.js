@@ -46,9 +46,20 @@ class ScoringEngine {
         // Variables pour le mode Précision (Corridor)
         let isPrecisionMode = (this.config.mode === 'precision');
         let idealPath = this.roadbook.trackPoints || this.roadbook.route || [];
+        
+        // v2.9.0.001: Fallback si le GPX ne contient que des Waypoints (<wpt>) sans trace/route
+        if (isPrecisionMode && idealPath.length < 2 && this.roadbook.waypoints && this.roadbook.waypoints.length >= 2) {
+            console.log("[ScoringEngine] Roadbook sans trace : utilisation des waypoints comme tracé idéal.");
+            idealPath = this.roadbook.waypoints;
+        }
+
         let lastIdealIdx = 0;
         let corridorTol = this.config.corridorTolerance || 20;
         let corridorCoef = this.config.corridorCoef || 1;
+
+        if (isPrecisionMode) {
+            console.log(`[ScoringEngine] Mode PRÉCISION actif. Corridor: ${corridorTol}m, Coef: ${corridorCoef}, PathPts: ${idealPath.length}`);
+        }
 
         let dssTime = null;
         let assTime = null;

@@ -1,4 +1,4 @@
-/* ── RallyRanking V2.2 Bridge ─────────────────────────────────────────────── */
+/* ── RallyRanking V2.9.0.001 Bridge ─────────────────────────────────────────────── */
 window.rrState = {
     roadbook: null,
     pilots: [],
@@ -261,9 +261,9 @@ function calculateRRScoring() {
     };
 
     const config = {
+        ...baseConfig,
         mode: window.rrState.mode, 
-        maxTimeSeconds: maxT,
-        ...baseConfig
+        maxTimeSeconds: maxT
     };
 
     window.rrState.engine = new ScoringEngine(window.rrState.roadbook, config);
