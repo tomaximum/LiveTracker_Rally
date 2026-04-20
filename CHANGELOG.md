@@ -1,5 +1,9 @@
 # 📝 Journal des Modifications (CHANGELOG)
 
+## [2.8.0] - 2026-04-20 (Désactivation Pénalités & Defaults)
+- **Scoring** : L'assignation d'un coefficient d'avance de "0" désactive désormais complètement les pénalités sur les zones de Neutralisation ou de Transfert (Avance ET Retard annulés).
+- **Interface** : Le coefficient de sortie anticipée par défaut passe à `5s/sec` d'avance (au lieu des 60s/sec de la version précédente).
+
 ## [2.7.9] - 2026-04-20 (Fix Unité Balise Nautralization)
 - **Parseur GPX** : Tout comme la balise `time=`, la balise autonome `<openrally:neutralization>` exprime sa valeur en Secondes (et non en Minutes). Le parseur la convertit désormais correctement sous peine d'infliger des pénalités massives d'avance sur zone.
 

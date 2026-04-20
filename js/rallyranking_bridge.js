@@ -99,7 +99,10 @@ function initRRBridge() {
 
     if (configSave) {
         configSave.onclick = () => {
-            const getVal = (id, def) => parseInt(document.getElementById(id).value) || def;
+            const getVal = (id, def) => {
+                const v = parseInt(document.getElementById(id).value);
+                return isNaN(v) ? def : v;
+            };
             const rawName = document.getElementById('rr-cfg-name').value || 'Rallye LiveTrack';
             const rawDate = document.getElementById('rr-cfg-date')?.value || '';
             const finalEventName = rawDate ? `${rawName.trim()} ${rawDate}` : rawName.trim();
@@ -110,7 +113,7 @@ function initRRBridge() {
                 speedLimit: getVal('rr-cfg-speed', 0),
                 speedGracePeriod: 10,
                 speedCoef: parseFloat(document.getElementById('rr-cfg-coef').value) || 1,
-                earlyNeutralRate: getVal('rr-cfg-early-coef', 60),
+                earlyNeutralRate: getVal('rr-cfg-early-coef', 5),
                 lateNeutralGrace: getVal('rr-cfg-late-grace', 60),
                 wptTolerance: 100,
                 wptPenalties: {

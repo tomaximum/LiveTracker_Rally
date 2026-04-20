@@ -115,19 +115,22 @@ class ScoringEngine {
                                 let late = durS - (allowedS + lateGrace);
                                 let early = allowedS - durS;
 
-                                if (early > 0) {
-                                    let earlyRate = (this.config.earlyNeutralRate !== undefined) ? this.config.earlyNeutralRate : 60;
-                                    result.penaltiesBox.push({
-                                        type: 'EARLY_CH',
-                                        desc: `Sortie de neutralisation en avance (${Math.round(early)}s)`,
-                                        cost: Math.round(early) * earlyRate
-                                    });
-                                } else if (late > 0) {
-                                    result.penaltiesBox.push({
-                                        type: 'LATE_CH',
-                                        desc: `Sortie de neutralisation en retard (+${Math.round(late)}s au-delà de la tolérance)`,
-                                        cost: Math.round(late)
-                                    });
+                                let earlyRate = (this.config.earlyNeutralRate !== undefined) ? this.config.earlyNeutralRate : 5;
+                                
+                                if (earlyRate > 0) {
+                                    if (early > 0) {
+                                        result.penaltiesBox.push({
+                                            type: 'EARLY_CH',
+                                            desc: `Sortie de neutralisation en avance (${Math.round(early)}s)`,
+                                            cost: Math.round(early) * earlyRate
+                                        });
+                                    } else if (late > 0) {
+                                        result.penaltiesBox.push({
+                                            type: 'LATE_CH',
+                                            desc: `Sortie de neutralisation en retard (+${Math.round(late)}s au-delà de la tolérance)`,
+                                            cost: Math.round(late)
+                                        });
+                                    }
                                 }
                             }
                         }
