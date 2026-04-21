@@ -143,16 +143,40 @@ Cliquez sur **🧪 Tester** à côté du Token pour vérifier que la connexion f
 
 ---
 
-## 📍 Étape 4 — Les pilotes partagent leur position
+## 📍 Étape 4 — Les pilotes rejoignent le groupe et partagent leur position
 
-Dans le groupe Telegram, chaque pilote doit :
+### 4.1 — Inviter les pilotes dans le groupe
+
+Avant de pouvoir partager leur position, les pilotes doivent **rejoindre le groupe Telegram** que vous avez créé.
+
+**Option A — Via QR Code (recommandé sur le terrain) :**
+
+1. Dans votre groupe Telegram, ouvrez les **informations du groupe** (cliquez sur le nom du groupe en haut)
+2. Appuyez sur **"Inviter via lien"** ou **"Ajouter des membres"**
+3. Sélectionnez **"Lien d'invitation"** puis **"Générer un QR Code"**
+4. Affichez le QR Code sur votre téléphone — les pilotes le scannent avec l'appareil photo de leur téléphone et sont immédiatement ajoutés au groupe
+
+**Option B — Via lien d'invitation :**
+
+1. Générez un lien d'invitation depuis les infos du groupe
+2. Partagez ce lien par SMS, e-mail ou imprimez-le sur la feuille de route
+3. Le pilote clique sur le lien → Telegram s'ouvre → il appuie sur **"Rejoindre"**
+
+> 💡 Une fois dans le groupe, le pilote voit les messages et peut partager sa position. S'il n'a pas encore Telegram, il doit d'abord installer l'application (gratuite, sur App Store et Google Play).
+
+---
+
+### 4.2 — Partager la position en direct
+
+Une fois dans le groupe, chaque pilote doit :
 
 1. Appuyer sur le **trombone 📎** (pièce jointe) ou l'icône **`+`**
 2. Sélectionner **"Localisation"**
 3. Choisir **"Partager ma position en direct"**
 4. Sélectionner une durée (ex: **8 heures**)
 
-> 💡 La position se met à jour automatiquement toutes les quelques secondes tant que le partage est actif.
+> 💡 La position se met à jour automatiquement toutes les quelques secondes tant que le partage est actif.  
+> Si le pilote arrête le partage ou que la durée est écoulée, sa position n'est plus mise à jour sur la carte.
 
 ---
 
