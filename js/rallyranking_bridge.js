@@ -26,10 +26,16 @@ function initRRBridge() {
     const inPilots = document.getElementById('input-pilots');
     const dateInput = document.getElementById('rr-cfg-date');
     
-    // Auto-fill configuration date to today
+    // Auto-fill configuration date and name to today
     if (dateInput && !dateInput.value) {
         const today = new Date();
-        dateInput.value = today.toISOString().split('T')[0];
+        const dateStr = today.toISOString().split('T')[0];
+        dateInput.value = dateStr;
+        
+        const nameInput = document.getElementById('rr-cfg-name');
+        if (nameInput && !nameInput.value) {
+            nameInput.value = `Classement du ${dateStr}`;
+        }
     }
 
     if (!dzRoadbook || !dzPilots) return;
