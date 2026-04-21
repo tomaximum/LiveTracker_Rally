@@ -199,25 +199,6 @@ Pour une expérience terrain optimale :
 
 ---
 
-## 📂 Structure du Projet
-
-```
-LiveTracker_Rally/
-├── index.html                    # App principale
-├── js/
-│   ├── app.js                    # Moteur principal (GPS, alertes, télémétrie)
-│   ├── gpx.js                    # Parser GPX OpenRally
-│   ├── rallyranking_bridge.js    # Module Scoring intégré
-│   ├── scoring.js                # Moteur de calcul des pénalités
-│   ├── simulation.js             # Mode simulation (test sans pilotes)
-│   ├── wizard.js                 # Assistant de configuration Telegram
-│   ├── map.js                    # Gestion carte Leaflet (Scoring)
-│   └── export.js                 # Export PDF/CSV
-├── css/
-│   └── style.css
-```
-
-
 ## 📜 Licence
 
 Ce projet est sous licence **GNU GPL v3**. Toute modification ou redistribution doit rester open-source sous les mêmes termes. Voir [LICENSE](LICENSE).
