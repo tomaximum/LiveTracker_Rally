@@ -36,9 +36,9 @@ const state = {
     wakeLock: null
 };
 
-const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbwIZar4aEgYhMg7tAb_Cmpip6odFLEG4jIl12rMIraxAuMRV7-1a9HGKk678qKGn5gY1g/exec';
+const TELEMETRY_URL = (typeof SECRETS !== 'undefined') ? SECRETS.GDRIVE_WEBHOOK_URL : '';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.1.0-testing';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -752,6 +752,11 @@ function initAlertEngine() {
         showToast(alert.message, alert.type === AlertType.IMMOBILE ? 'error' : 'warn');
         if (state.settings.soundAlert) playAlertSound();
         if (state.settings.browserNotif) sendBrowserNotif(alert.message);
+        
+        // v3.1.0: Double Botting - Send alert to Admin Bot if configured
+        if (typeof SECRETS !== 'undefined' && SECRETS.TELEGRAM_ADMIN_TOKEN && SECRETS.TELEGRAM_ADMIN_CHAT_ID) {
+            sendTelegramAdmin(alert.message);
+        }
     };
 
     state.alertEngine.onResolve = (alert) => {
@@ -1593,5 +1598,29 @@ async function clearDatabase() {
 
     // Force reload to restart from scratch (shows wizard)
     location.reload();
+}
+
+/**
+ * 🛰️ Double Botting Service (v3.1.0)
+ * Sends alerts to the administrative bot defined in GitHub Secrets.
+ */
+async function sendTelegramAdmin(message) {
+    if (typeof SECRETS === 'undefined' || !SECRETS.TELEGRAM_ADMIN_TOKEN || !SECRETS.TELEGRAM_ADMIN_CHAT_ID) return;
+    
+    const url = `https://api.telegram.org/bot${SECRETS.TELEGRAM_ADMIN_TOKEN}/sendMessage`;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: SECRETS.TELEGRAM_ADMIN_CHAT_ID,
+                text: `🚨 [LIVE ALERT] ${message}`,
+                parse_mode: 'HTML'
+            })
+        });
+        console.log("Telemetry: Admin notification sent.");
+    } catch (e) {
+        console.error("Telemetry: Failed to send Admin notification", e);
+    }
 }
 
