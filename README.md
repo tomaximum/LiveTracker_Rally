@@ -22,10 +22,6 @@
 - **Pénalités automatisées** : Waypoints manqués, survitesses, sorties de neutralisation
 - **Export** : PDF des fiches pilotes, CSV des classements, export Drive automatique
 
-### ⚙️ Télémétrie Double Bot
-- **Bot Tracking (Paramètres)** : Votre bot habituel — reçoit les positions. Peut aussi envoyer les alertes de sécurité sur un **ID Chat Alertes** optionnel
-- **Bot Système (GitHub Secrets)** : Notifie en silence du chargement des roadbooks, des stats et du démarrage de l'app
-
 ---
 
 ## 🚀 Démarrage Rapide
@@ -38,8 +34,8 @@ Dans `Settings > Environments > github-pages > Secrets`, ajoutez :
 
 | Secret | Description |
 |--------|-------------|
-| `TELEGRAM_ADMIN_BOT_TOKEN` | Token du Bot Système (télémétrie) |
-| `TELEGRAM_ADMIN_CHAT_ID` | ID du chat de réception télémétrie |
+| `TELEGRAM_ADMIN_BOT_TOKEN` | Token du Bot Admin |
+| `TELEGRAM_ADMIN_CHAT_ID` | ID du chat Admin |
 | `GDRIVE_WEBHOOK_URL` | URL du Google Apps Script pour l'archivage Drive |
 
 > ⚠️ Ces secrets sont injectés automatiquement à chaque déploiement dans `js/secrets.js`. Ne pas les commiter manuellement.
