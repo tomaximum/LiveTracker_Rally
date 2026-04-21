@@ -76,22 +76,6 @@ LiveTracker_Rally/
 └── GoogleAppsScript_Telemetry.js # Script Drive côté Google
 ```
 
----
-
-## 🛠️ Développement
-
-**Architecture** : 100% statique (HTML/CSS/JS vanille), aucune dépendance npm côté runtime.
-
-**Déploiement local** :
-```bash
-# Serveur HTTP simple pour tester en local
-python -m http.server 8080
-# Puis ouvrir http://localhost:8080
-```
-
-> ⚠️ En local, `js/secrets.js` n'existe pas (généré uniquement par CI). Les fonctions Bot B et Drive sont silencieuses mais n'impactent pas les fonctionnalités de base.
-
----
 
 ## 📜 Licence
 
