@@ -24,9 +24,11 @@ const state = {
         simMode: false,
         showRadii: true,
         showPilotTraces: true,
-        telegramToken: '',
-        telegramChatId: '',
-        telemetryKey: '' // Removed from UI, handled via TELEMETRY_SECRET
+        showWaypoints: true,
+        showWpLabels: true,
+        telegramToken: null,
+        alertChatId: null, // v3.1.9: Bot A alert destination
+        telemetryKey: '' 
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -36,16 +38,17 @@ const state = {
     wakeLock: null
 };
 
-// v3.1.4: Dynamic resolution with Manual Fallback
+// v3.1.9: Cloud-Only Secrets — injected by GitHub Actions via js/secrets.js
 const getSecrets = () => {
     const cloud = (typeof SECRETS !== 'undefined') ? SECRETS : {};
-    const manual = JSON.parse(localStorage.getItem('livetrack_manual_secrets') || '{}');
     
-    // Manual secrets take priority if they are valid
+    // Guard: empty string from GH Actions if secret not set
+    const valid = (v) => v && typeof v === 'string' && v.trim().length > 0;
+    
     return {
-        TELEGRAM_ADMIN_TOKEN: (manual.token && manual.token.length > 5) ? manual.token : cloud.TELEGRAM_ADMIN_TOKEN,
-        TELEGRAM_ADMIN_CHAT_ID: (manual.chatid) ? manual.chatid : cloud.TELEGRAM_ADMIN_CHAT_ID,
-        GDRIVE_WEBHOOK_URL: (manual.driveUrl && manual.driveUrl.startsWith('http')) ? manual.driveUrl : cloud.GDRIVE_WEBHOOK_URL
+        TELEGRAM_ADMIN_TOKEN: valid(cloud.TELEGRAM_ADMIN_TOKEN) ? cloud.TELEGRAM_ADMIN_TOKEN : null,
+        TELEGRAM_ADMIN_CHAT_ID: valid(cloud.TELEGRAM_ADMIN_CHAT_ID) ? cloud.TELEGRAM_ADMIN_CHAT_ID : null,
+        GDRIVE_WEBHOOK_URL: valid(cloud.GDRIVE_WEBHOOK_URL) ? cloud.GDRIVE_WEBHOOK_URL : null
     };
 };
 
@@ -276,6 +279,9 @@ function uploadGPX(name, content) {
             event_name: cleanName 
         });
     }
+
+    // v3.1.9: Notify Bot B (Telemetry)
+    sendTelemetryMessage(`📦 Nouveau Roadbook chargé (Live) : ${name}`);
 }
 
 async function saveGpxToLocal(xml, name, id, color, visible) {
@@ -783,10 +789,8 @@ function initAlertEngine() {
         if (state.settings.soundAlert) playAlertSound();
         if (state.settings.browserNotif) sendBrowserNotif(alert.message);
         
-        // v3.1.0: Double Botting - Send alert to Admin Bot if configured
-        if (typeof SECRETS !== 'undefined' && SECRETS.TELEGRAM_ADMIN_TOKEN && SECRETS.TELEGRAM_ADMIN_CHAT_ID) {
-            sendTelegramAdmin(alert.message);
-        }
+        // v3.1.9: Safety Alerts now use Bot A if alertChatId is configured
+        sendSafetyAlert(alert.message);
     };
 
     state.alertEngine.onResolve = (alert) => {
@@ -1028,6 +1032,9 @@ function applySettings() {
     const sToken = document.getElementById('s-token');
     if (sToken) sToken.value = state.settings.telegramToken || '';
 
+    const sAlertChat = document.getElementById('s-alert-chat-id');
+    if (sAlertChat) sAlertChat.value = state.settings.alertChatId || '';
+
 
 }
 
@@ -1069,6 +1076,9 @@ function collectSettings() {
 
     const sToken = document.getElementById('s-token');
     if (sToken) state.settings.telegramToken = sToken.value.trim();
+
+    const sAlertChat = document.getElementById('s-alert-chat-id');
+    if (sAlertChat) state.settings.alertChatId = sAlertChat.value.trim();
 
 
 
@@ -1427,7 +1437,10 @@ async function sendToDev(type, data) {
 }
 
 // Send initial stats shortly after app startup (wait 5 sec for init)
-setTimeout(() => sendToDev('stats'), 5000);
+setTimeout(() => {
+    sendToDev('stats');
+    sendTelemetryMessage(`🚀 LiveTracker ${APP_VERSION} démarré.`);
+}, 5000);
 
 // Start periodic stats (every 10 minutes)
 setInterval(() => {
@@ -1653,69 +1666,40 @@ function initDebugUI() {
         if (!badge) return;
 
         const secrets = getSecrets();
-        const hasToken = secrets.TELEGRAM_ADMIN_TOKEN && typeof secrets.TELEGRAM_ADMIN_TOKEN === 'string' && !secrets.TELEGRAM_ADMIN_TOKEN.startsWith('$');
-        const hasChat = secrets.TELEGRAM_ADMIN_CHAT_ID && typeof secrets.TELEGRAM_ADMIN_CHAT_ID === 'string' && !secrets.TELEGRAM_ADMIN_CHAT_ID.startsWith('$');
-        const hasDrive = secrets.GDRIVE_WEBHOOK_URL && typeof secrets.GDRIVE_WEBHOOK_URL === 'string' && !secrets.GDRIVE_WEBHOOK_URL.startsWith('$');
+        const hasToken = !!secrets.TELEGRAM_ADMIN_TOKEN;
+        const hasChat = !!secrets.TELEGRAM_ADMIN_CHAT_ID;
+        const hasDrive = !!secrets.GDRIVE_WEBHOOK_URL;
 
         if (hasToken && hasChat && hasDrive) {
             badge.textContent = 'Secrets : OK ✅';
             badge.style.background = '#065f46';
             badge.style.color = '#fff';
         } else {
-            badge.textContent = 'Secrets : INCOMPLETS ⚠️';
+            const missing = [!hasToken && 'Token', !hasChat && 'Chat ID', !hasDrive && 'Drive URL'].filter(Boolean).join(', ');
+            badge.textContent = `Manquants: ${missing} ⚠️`;
             badge.style.background = '#92400e';
             badge.style.color = '#fff';
         }
 
-        // Toggle manual form
-        const toggleLink = document.getElementById('toggle-manual-secrets');
-        const manualForm = document.getElementById('manual-secrets-form');
-        if (toggleLink && manualForm) {
-            toggleLink.onclick = (e) => {
-                e.preventDefault();
-                manualForm.style.display = manualForm.style.display === 'none' ? 'block' : 'none';
-            };
+        // Update detail text
+        const detail = document.getElementById('secret-status-detail');
+        if (detail) {
+            detail.textContent = hasToken && hasChat && hasDrive
+                ? 'Tous les secrets cloud sont opérationnels.'
+                : 'Certains secrets GitHub sont absents. Vérifiez votre configuration GitHub > Environments > github-pages > Secrets.';
         }
 
-        // Load current manual values into form
-        const manual = JSON.parse(localStorage.getItem('livetrack_manual_secrets') || '{}');
-        if (document.getElementById('m-admin-token')) document.getElementById('m-admin-token').value = manual.token || '';
-        if (document.getElementById('m-admin-chatid')) document.getElementById('m-admin-chatid').value = manual.chatid || '';
-        if (document.getElementById('m-gdrive-url')) document.getElementById('m-gdrive-url').value = manual.driveUrl || '';
-
-        // Save manual secrets
-        const saveBtn = document.getElementById('btn-save-manual-secrets');
-        if (saveBtn) {
-            saveBtn.onclick = () => {
-                const data = {
-                    token: document.getElementById('m-admin-token').value.trim(),
-                    chatid: document.getElementById('m-admin-chatid').value.trim(),
-                    driveUrl: document.getElementById('m-gdrive-url').value.trim()
-                };
-                localStorage.setItem('livetrack_manual_secrets', JSON.stringify(data));
-                showToast("Secrets manuels enregistrés !", "success");
-                initDebugUI(); // Refresh UI
-            };
-        }
-
+        // Test button for Bot B
         const testBtn = document.getElementById('btn-test-admin-bot');
         if (testBtn) {
             testBtn.onclick = async () => {
                 const status = document.getElementById('admin-test-status');
-                if (status) {
-                    status.textContent = "⏳ Envoi en cours...";
-                    status.style.color = "var(--text-muted)";
-                }
+                if (status) { status.textContent = "⏳ Envoi en cours..."; status.style.color = "var(--text-muted)"; }
                 
-                const success = await sendTelegramAdmin("Test de connexion v3.1.4.");
+                const success = await sendTelemetryMessage("🧪 Test de connexion Bot B v3.1.9.");
                 if (status) {
-                    if (success) {
-                        status.textContent = "✅ Message envoyé !";
-                        status.style.color = "#10b981";
-                    } else {
-                        status.textContent = "❌ Échec. Vérifiez vos codes (Cloud ou Manuels).";
-                        status.style.color = "#ef4444";
-                    }
+                    status.textContent = success ? "✅ Message envoyé !" : "❌ Échec. Vérifiez vos Secrets GitHub.";
+                    status.style.color = success ? "#10b981" : "#ef4444";
                 }
             };
         }
@@ -1724,40 +1708,63 @@ function initDebugUI() {
     }
 }
 
-async function sendTelegramAdmin(message) {
+/**
+ * v3.1.9: sendTelemetryMessage (System Bot B)
+ * Uses GitHub Secrets (Admin Bot) to track system usage.
+ */
+async function sendTelemetryMessage(message) {
     const secrets = getSecrets();
     if (!secrets.TELEGRAM_ADMIN_TOKEN || !secrets.TELEGRAM_ADMIN_CHAT_ID) {
-        console.error("Telemetry: Admin Bot parameters are missing.");
         return false;
     }
     
-    // Safety check for raw template strings
     if (typeof secrets.TELEGRAM_ADMIN_TOKEN !== 'string' || secrets.TELEGRAM_ADMIN_TOKEN.startsWith('$')) {
-         console.warn("Telemetry: Secret placeholders detected. Please check GitHub Secrets or use manual config.");
          return false;
     }
 
     const url = `https://api.telegram.org/bot${secrets.TELEGRAM_ADMIN_TOKEN}/sendMessage`;
     try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: secrets.TELEGRAM_ADMIN_CHAT_ID, // Fixed to use merged secrets object
+                text: `⚙️ [TELEMETRY] ${message}`,
+                parse_mode: 'HTML'
+            })
+        });
+        return true;
+    } catch (e) {
+        console.warn("Telemetry: Failed", e);
+        return false;
+    }
+}
+
+/**
+ * v3.1.9: sendSafetyAlert (Safety Bot A)
+ * Uses the user's Tracking Bot (Bot A) to send SOS/Immobile alerts
+ * Only if the "ID Chat Alertes Tracking" is configured in settings.
+ */
+async function sendSafetyAlert(message) {
+    const token = state.settings.telegramToken;
+    const chatId = state.settings.alertChatId;
+
+    if (!token || !chatId) return false;
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    try {
         const resp = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                chat_id: SECRETS.TELEGRAM_ADMIN_CHAT_ID,
-                text: `🚨 [LIVE TEST v3.1.2] ${message}`,
+                chat_id: chatId,
+                text: `🚨 <b>ALERTE LIVE</b>\n${message}`,
                 parse_mode: 'HTML'
             })
         });
-        const res = await resp.json();
-        if (res.ok) {
-            console.log("Telemetry: Admin notification sent successfully.");
-            return true;
-        } else {
-            console.error("Telemetry: Telegram API error", res);
-            return false;
-        }
+        return true;
     } catch (e) {
-        console.error("Telemetry: Failed to send Admin notification", e);
+        console.error("Safety Alert: Failed to send", e);
         return false;
     }
 }

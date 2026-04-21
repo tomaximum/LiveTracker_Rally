@@ -149,7 +149,7 @@
       </div>
       <!-- Version Footer -->
       <div style="margin-top:auto;padding:12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center;">
-        <em>Développé par Antigravity et Tomaximum — Version 3.1.0-testing (Cloud ☁️)</em><br>
+        <em>Développé par Antigravity et Tomaximum — Version 3.1.9-testing (Cloud ☁️)</em><br>
         <small>Licence MIT — <a href="LICENSE" style="color:var(--text-secondary)">Voir la licence</a></small>
       </div>
       </div> <!-- End tab-live -->
@@ -358,6 +358,16 @@
           </div>
         </div>
 
+        <div class="form-group" id="alert-chat-group">
+          <label>ID Chat Alertes Tracking (Optionnel)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="s-alert-chat-id" placeholder="-100123456789..." style="flex:1;" />
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Si renseigné, recevez les SOS et alertes d'immobilité via votre Bot Tracking (Bot A).
+          </div>
+        </div>
+
 
 
         <div id="token-test-section" style="margin-bottom:15px;">
@@ -367,34 +377,19 @@
           <div id="settings-test-status" style="font-size:11px; margin-top:6px; text-align:center; display:none;"></div>
         </div>
 
-        <!-- Section Télémétrie Admin (v3.1.4) -->
+        <!-- Section Télémétrie Bot B (v3.1.9) — Cloud Only -->
         <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <label style="margin-bottom:0;">🚨 Télémétrie Admin (Secrets Cloud)</label>
+            <label style="margin-bottom:0;">⚙️ Télémétrie Système (Bot B)</label>
             <div id="secret-status-badge" style="padding: 2px 8px; border-radius: 10px; font-size: 10px; background: #333;">Vérification...</div>
           </div>
-          
-          <button class="btn btn-accent" id="btn-test-admin-bot" style="width:100%; justify-content:center; font-size:12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); transition: all 0.2s;">
-            🧪 Tester la Télémétrie Admin (Bot B)
+          <div id="secret-status-detail" style="font-size:10px; color:var(--text-muted); margin-bottom:10px;">
+            Secrets injectés automatiquement via GitHub Actions.
+          </div>
+          <button class="btn" id="btn-test-admin-bot" style="width:100%; justify-content:center; font-size:12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);">
+            🧪 Tester la Télémétrie (Bot B)
           </button>
           <div id="admin-test-status" style="font-size:10px; margin-top:6px; text-align:center;"></div>
-
-          <div style="text-align:right; margin-top:8px;">
-            <a href="#" id="toggle-manual-secrets" style="font-size:10px; color:var(--text-muted); text-decoration:none;">🔧 Configurer manuellement</a>
-          </div>
-
-          <div id="manual-secrets-form" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid var(--border);">
-             <label style="font-size:10px; color:var(--text-secondary);">TOKEN BOT ADMIN (SECRET)</label>
-             <input type="password" id="m-admin-token" placeholder="Bot Token..." style="width:100%; margin-bottom:10px;">
-             <label style="font-size:10px; color:var(--text-secondary);">CHAT ID ADMIN (SECRET)</label>
-             <input type="text" id="m-admin-chatid" placeholder="Votre Chat ID..." style="width:100%; margin-bottom:10px;">
-             <label style="font-size:10px; color:var(--text-secondary);">GDRIVE WEBHOOK URL (SECRET)</label>
-             <input type="text" id="m-gdrive-url" placeholder="URL Google Script..." style="width:100%; margin-bottom:15px;">
-             <button class="btn btn-primary" id="btn-save-manual-secrets" style="width:100%; font-size:12px; background:var(--accent);">
-               💾 Enregistrer ces secrets localement
-             </button>
-             <p style="font-size:9px; color:var(--text-muted); margin-top:8px; text-align:center;">Note : Ces secrets seront prioritaires sur ceux injectés par GitHub.</p>
-          </div>
         </div>
       </div>
 
