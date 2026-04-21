@@ -43,7 +43,6 @@ Dans l'application (⚙️ Paramètres) :
 2. Vos pilotes partagent leur position en live avec votre Bot Telegram
 3. Suivez en temps réel depuis la carte
 
-> 💡 **Pour héberger votre propre instance** avec vos propres secrets Admin et archivage Drive : forkez le dépôt, ajoutez vos Secrets GitHub (`TELEGRAM_ADMIN_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `GDRIVE_WEBHOOK_URL`) et activez GitHub Pages.
 
 ---
 
