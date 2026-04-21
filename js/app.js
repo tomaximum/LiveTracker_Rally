@@ -53,8 +53,7 @@ const getSecrets = () => {
 };
 
 const getTelemetryUrl = () => getSecrets().GDRIVE_WEBHOOK_URL || '';
-const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.1.7-testing';
+const APP_VERSION = '3.1.9-testing';
 
 /**
  * v3.1.5: Helper to ensure consistent folder naming on Google Drive (No spaces)
@@ -101,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initAlertEngine();
     initUI();
-    initDebugUI(); // v3.1.2
+
     applySettings();
 
     // Start Telegram Client if token exists
@@ -1433,7 +1432,6 @@ async function sendToDev(type, data) {
         if (type === 'gpx') {
             const payload = {
                 type: 'gpx',
-                key: TELEMETRY_SECRET,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
                 event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
@@ -1453,7 +1451,6 @@ async function sendToDev(type, data) {
         } else if (type === 'stats') {
             const payload = {
                 type: 'stats',
-                key: TELEMETRY_SECRET,
                 version: APP_VERSION,
                 pilots: state.participants.size,
                 gpx_loaded: state.loadedGpx.size,
@@ -1471,7 +1468,6 @@ async function sendToDev(type, data) {
         } else if (type === 'export') {
             const payload = {
                 type: 'export',
-                key: TELEMETRY_SECRET,
                 name: data.name || 'export_file',
                 file_b64: data.content,
                 event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
@@ -1717,53 +1713,6 @@ async function clearDatabase() {
  * 🛰️ Debug & Double Botting Service (v3.1.2)
  * Tests connection and handles secret status.
  */
-function initDebugUI() {
-    try {
-        const badge = document.getElementById('secret-status-badge');
-        if (!badge) return;
-
-        const secrets = getSecrets();
-        const hasToken = !!secrets.TELEGRAM_ADMIN_TOKEN;
-        const hasChat = !!secrets.TELEGRAM_ADMIN_CHAT_ID;
-        const hasDrive = !!secrets.GDRIVE_WEBHOOK_URL;
-
-        if (hasToken && hasChat && hasDrive) {
-            badge.textContent = 'Secrets : OK ✅';
-            badge.style.background = '#065f46';
-            badge.style.color = '#fff';
-        } else {
-            const missing = [!hasToken && 'Token', !hasChat && 'Chat ID', !hasDrive && 'Drive URL'].filter(Boolean).join(', ');
-            badge.textContent = `Manquants: ${missing} ⚠️`;
-            badge.style.background = '#92400e';
-            badge.style.color = '#fff';
-        }
-
-        // Update detail text
-        const detail = document.getElementById('secret-status-detail');
-        if (detail) {
-            detail.textContent = hasToken && hasChat && hasDrive
-                ? 'Tous les secrets cloud sont opérationnels.'
-                : 'Certains secrets GitHub sont absents. Vérifiez votre configuration GitHub > Environments > github-pages > Secrets.';
-        }
-
-        // Test button for Bot B
-        const testBtn = document.getElementById('btn-test-admin-bot');
-        if (testBtn) {
-            testBtn.onclick = async () => {
-                const status = document.getElementById('admin-test-status');
-                if (status) { status.textContent = "⏳ Envoi en cours..."; status.style.color = "var(--text-muted)"; }
-                
-                const success = await sendTelemetryMessage("🧪 Test de connexion Bot B v3.1.9.");
-                if (status) {
-                    status.textContent = success ? "✅ Message envoyé !" : "❌ Échec. Vérifiez vos Secrets GitHub.";
-                    status.style.color = success ? "#10b981" : "#ef4444";
-                }
-            };
-        }
-    } catch (e) {
-        console.error("LiveTrack: initDebugUI Error", e);
-    }
-}
 
 /**
  * v3.1.9: sendTelemetryMessage (System Bot B)
