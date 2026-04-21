@@ -68,8 +68,7 @@ LiveTracker_Rally/
 │   ├── simulation.js             # Mode simulation (test sans pilotes)
 │   ├── wizard.js                 # Assistant de configuration Telegram
 │   ├── map.js                    # Gestion carte Leaflet (Scoring)
-│   ├── export.js                 # Export PDF/CSV
-│   └── secrets.js                # ⚡ Généré automatiquement par CI — ne pas éditer
+│   └── export.js                 # Export PDF/CSV
 ├── css/
 │   └── style.css
 ├── .github/workflows/
