@@ -51,7 +51,26 @@ const getSecrets = () => {
 
 const getTelemetryUrl = () => getSecrets().GDRIVE_WEBHOOK_URL || '';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.1.4-testing';
+const APP_VERSION = '3.1.5-testing';
+
+/**
+ * v3.1.5: Helper to ensure consistent folder naming on Google Drive (No spaces)
+ */
+function getCleanEventName(providedName) {
+    let name = providedName || '';
+    if (!name && state.loadedGpx.size > 0) {
+        // Fallback to loaded GPX name
+        name = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
+    }
+    
+    // Default fallback: "Classement du YYYY-MM-DD"
+    if (!name) {
+        const today = new Date().toISOString().split('T')[0];
+        name = `Classement du ${today}`;
+    }
+    
+    return name.trim().replace(/\s+/g, '_');
+}
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -249,7 +268,7 @@ function uploadGPX(name, content) {
     loadGPX(content, name, id);
     
     // Envoyer immédiatement à la télémétrie Drive à l'insertion
-    const cleanName = name.replace(/\.gpx$/i, '');
+    const cleanName = getCleanEventName(name.replace(/\.gpx$/i, ''));
     if (typeof sendToDev === 'function') {
         sendToDev('gpx', { 
             xml: content, 
@@ -319,11 +338,8 @@ function exportLiveTraces() {
     
     showToast(`Exportation de ${withHistory.length} trace(s)...`, "success");
     
-    // Extraire le nom de l'évènement à partir du premier roadbook chargé (s'il existe)
-    let eventName = 'Event_Live_Inconnu';
-    if (state.loadedGpx.size > 0) {
-        eventName = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
-    }
+    // v3.1.5: Normalize event name for consistent folder creation
+    const eventName = getCleanEventName();
     
     withHistory.forEach(p => {
         ExportTools.generateGPXFromHistory(p.data.name || p.id, p.data.history, eventName);
