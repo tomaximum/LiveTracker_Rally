@@ -32,7 +32,17 @@ class GPXParser {
       const routePoints = this.extractRoutePoints(xml);   // Sans timestamp (roadbook)
       const waypoints = this.extractWaypoints(xml);
 
-      return { trackPoints, routePoints, waypoints, route: routePoints };
+      // v3.1.9: Fallback - If no tracks or routes, generate a synthetic route by connecting waypoints
+      const finalRoute = (routePoints && routePoints.length >= 2) 
+          ? routePoints 
+          : waypoints.map((w, i) => ({ 
+              id: i, 
+              lat: w.lat, 
+              lon: w.lon,
+              isGenerated: true 
+          }));
+
+      return { trackPoints, routePoints, waypoints, route: finalRoute };
   }
 
   // Points avec timestamp obligatoire — pour le calcul des concurrents

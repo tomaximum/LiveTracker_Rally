@@ -48,7 +48,24 @@ window.parseGPX = function(xmlText) {
 
     // Only waypoints
     const waypoints = parseWaypoints(xmlText);
-    return { route: [], trackPoints: [], routePoints: [], waypoints };
+    
+    // v3.1.9: Fallback - If no tracks or routes, generate a synthetic route by connecting waypoints
+    const generatedRoute = waypoints.map((wp, idx) => ({
+        id: idx,
+        lat: wp.lat,
+        lon: wp.lng, // ensure lon is used for scoring compat
+        lng: wp.lng,
+        ele: null,
+        time: null,
+        isGenerated: true
+    }));
+
+    return { 
+        route: generatedRoute, 
+        trackPoints: [], 
+        routePoints: generatedRoute, 
+        waypoints 
+    };
 };
 
 // Injection du module global
