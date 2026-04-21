@@ -2,7 +2,7 @@ name: Deploy LiveTrack Rally (Cloud v3.1.0)
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, testing ]
   workflow_dispatch:
 
 permissions:
