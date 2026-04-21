@@ -1,51 +1,113 @@
 # 📡 LiveTrack Rally Pro
 
-![Version](https://img.shields.io/badge/version-3.0.0--stable-brightgreen)
+![Version](https://img.shields.io/badge/version-3.1.9--testing-orange)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-black)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://votre-nom.github.io/LiveTracker_Rally/)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://tomaximum.github.io/LiveTracker_Rally/)
 
-**LiveTrack Rally Pro** est une application web de pointe dédiée au suivi GPS et au scoring en temps réel pour le Rallye Raid. Entièrement "Cloud Native" et s'exécutant sur **GitHub Pages**, elle offre une solution clé en main pour les organisateurs sans infrastructure complexe.
+**LiveTrack Rally Pro** est une application web de suivi GPS et de scoring en temps réel pour le Rallye Raid. Entièrement **Cloud Native**, elle s'exécute sur GitHub Pages sans aucun serveur ni infrastructure.
 
 ---
 
-## 💎 Fonctionnalités Phares (v3.0)
+## 💎 Fonctionnalités
 
-La version **v3.0 Stable** marque l'aboutissement d'un moteur de scoring ultra-précis et d'une interface mobile optimisée.
+### 🗺️ Module Live (Suivi GPS)
+- **Suivi temps réel** : Positions des pilotes via Bot Telegram (polling autonome)
+- **Roadbook GPX** : Import et affichage des traces OpenRally (WPV, WPM, WPE, WPS, WPN, DSS, ASS, DN/FN, DT/FT…)
+- **Alertes Sécurité** : Détection automatique des pilotes hors-route ou immobiles avec notification Telegram configurable
+- **Traces Live** : Historique des positions de chaque pilote avec export GPX
 
-- **🏆 Moteur de Scoring Précision (PRC)** : Calcul automatique des pénalités de corridor, survitesses, et validations de waypoints (Masqués, Eclipse, Visibles, etc.).
-- **📲 Mobile First & PWA** : Design "Edge-to-Edge" optimisé pour iPhone et Android avec support du mode hors-ligne et installation sur l'écran d'accueil.
-- **🤖 Intégration Telegram Directe** : Récupération des positions via un Bot Telegram standard. Pas de serveur intermédiaire, confidentialité totale des données.
-- **💾 Persistance Robuste** : Sauvegarde automatique des traces et des scores via IndexedDB. Aucune perte de données en cas de rafraîchissement ou de coupure réseau.
-- **🗺️ Cartographie Avancée** : Cartes interactive avec gestion multicouches (Satelitte, Topo, OpenStreetMap) et affichage dynamique des infractions.
-- **📑 Export Pro** : Génération de fiches de scores PDF et de traces GPX consolidées pour chaque pilote.
+### 🏆 Module Scoring (RallyRanking)
+- **Modes de Classement** : Temps Scratch, Régularité (pénalités), Précision Rally (corridor)
+- **Pénalités automatisées** : Waypoints manqués, survitesses, sorties de neutralisation
+- **Export** : PDF des fiches pilotes, CSV des classements, export Drive automatique
+
+### ⚙️ Télémétrie Double Bot
+- **Bot Tracking (Paramètres)** : Votre bot habituel — reçoit les positions. Peut aussi envoyer les alertes de sécurité sur un **ID Chat Alertes** optionnel
+- **Bot Système (GitHub Secrets)** : Notifie en silence du chargement des roadbooks, des stats et du démarrage de l'app
 
 ---
 
 ## 🚀 Démarrage Rapide
 
-1. **Déploiement** : Hébergez ce dépôt sur GitHub Pages.
-2. **Configuration** : Cliquez sur ⚙️ **Paramètres** et saisissez votre **Token Bot Telegram** (obtenu via @BotFather).
-3. **Roadbook** : Importez votre fichier GPX de référence (OpenRally compliant).
-4. **Action** : Invitez vos pilotes à partager leur position en direct avec votre Bot Telegram.
+### 1. Déploiement
+Forkez ce dépôt et activez **GitHub Pages** (Settings > Pages > `testing` ou `master`).
+
+### 2. Secrets GitHub
+Dans `Settings > Environments > github-pages > Secrets`, ajoutez :
+
+| Secret | Description |
+|--------|-------------|
+| `TELEGRAM_ADMIN_BOT_TOKEN` | Token du Bot Système (télémétrie) |
+| `TELEGRAM_ADMIN_CHAT_ID` | ID du chat de réception télémétrie |
+| `GDRIVE_WEBHOOK_URL` | URL du Google Apps Script pour l'archivage Drive |
+
+> ⚠️ Ces secrets sont injectés automatiquement à chaque déploiement dans `js/secrets.js`. Ne pas les commiter manuellement.
+
+### 3. Configuration App
+Dans l'application (⚙️ Paramètres) :
+- **Token Telegram** : Token de votre bot de suivi pilotes (obtenu via @BotFather)
+- **ID Chat Alertes Tracking** *(optionnel)* : ID du groupe où recevoir les alertes SOS/Immobilité
+
+### 4. Action
+1. Importez votre fichier GPX (OpenRally)
+2. Invitez vos pilotes à partager leur position via votre Bot Telegram
+3. Suivez en direct depuis la carte
 
 ---
 
-## 📱 Installation (PWA)
+## 📱 Installation PWA
 
-Pour une expérience optimale sur le terrain :
-1. Ouvrez l'URL dans **Safari** (iOS) ou **Chrome** (Android).
-2. Sélectionnez **"Ajouter sur l'écran d'accueil"**.
-3. Profitez d'une application plein écran sans barre d'adresse ni distractions.
+Pour une expérience terrain optimale :
+1. Ouvrez l'URL dans **Safari** (iOS) ou **Chrome** (Android)
+2. **"Ajouter sur l'écran d'accueil"**
+3. Application plein écran, hors-ligne capable
+
+---
+
+## 📂 Structure du Projet
+
+```
+LiveTracker_Rally/
+├── index.html                    # App principale
+├── js/
+│   ├── app.js                    # Moteur principal (GPS, alertes, télémétrie)
+│   ├── gpx.js                    # Parser GPX OpenRally
+│   ├── rallyranking_bridge.js    # Module Scoring intégré
+│   ├── scoring.js                # Moteur de calcul des pénalités
+│   ├── simulation.js             # Mode simulation (test sans pilotes)
+│   ├── wizard.js                 # Assistant de configuration Telegram
+│   ├── map.js                    # Gestion carte Leaflet (Scoring)
+│   ├── export.js                 # Export PDF/CSV
+│   └── secrets.js                # ⚡ Généré automatiquement par CI — ne pas éditer
+├── css/
+│   └── style.css
+├── .github/workflows/
+│   └── deploy.yml                # CI/CD : injection secrets + déploiement Pages
+└── GoogleAppsScript_Telemetry.js # Script Drive côté Google
+```
 
 ---
 
-## 🛠️ Contribution & Licence
+## 🛠️ Développement
 
-Le projet est désormais sous licence **GNU GPL v3**. Toute modification ou redistribution doit rester open-source sous les mêmes termes.
+**Architecture** : 100% statique (HTML/CSS/JS vanille), aucune dépendance npm côté runtime.
 
-- **Développement** : Architecture 100% statique (HTML/CSS/JS).
-- **Licence** : [GNU GPL v3](LICENSE).
+**Déploiement local** :
+```bash
+# Serveur HTTP simple pour tester en local
+python -m http.server 8080
+# Puis ouvrir http://localhost:8080
+```
+
+> ⚠️ En local, `js/secrets.js` n'existe pas (généré uniquement par CI). Les fonctions Bot B et Drive sont silencieuses mais n'impactent pas les fonctionnalités de base.
 
 ---
-*Projet propulsé par la communauté — Version 3.0.0 Stable*
+
+## 📜 Licence
+
+Ce projet est sous licence **GNU GPL v3**. Toute modification ou redistribution doit rester open-source sous les mêmes termes. Voir [LICENSE](LICENSE).
+
+---
+
+*Développé par Antigravity & Tomaximum — v3.1.9-testing*
