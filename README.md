@@ -1,11 +1,11 @@
-# 📡 LiveTrack Rally Pro
+# 📡 LiveTrack Rally
 
 ![Version](https://img.shields.io/badge/version-3.1.9--testing-orange)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-black)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://tomaximum.github.io/LiveTracker_Rally/)
 
-**LiveTrack Rally Pro** est une application web de suivi GPS et de scoring en temps réel pour le Rallye Raid. Entièrement **Cloud Native**, elle s'exécute sur GitHub Pages sans aucun serveur ni infrastructure.
+**LiveTrack Rally** est une application web de suivi GPS et de scoring en temps réel pour le Rallye Raid. Entièrement **Cloud Native**, elle s'exécute sur GitHub Pages sans aucun serveur ni infrastructure.
 
 ---
 
