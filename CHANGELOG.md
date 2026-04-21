@@ -1,4 +1,14 @@
-# 📝 Journal des Modifications (CHANGELOG)
+# 🚀 Journal des Modifications (CHANGELOG)
+
+## [3.0.0] - 2026-04-21 (Stable Release)
+- **Release Majeure** : Passage officiel en version 3.0 Stable.
+- **Licence** : Migration officielle vers la licence **GNU GPL v3**.
+- **Scoring Engine** : Finalisation du mode "Précision Rally" avec gestion affinée des corridors et waypoints.
+- **Scoring Engine** : Suppression des faux-positifs hors-piste en début et fin de roadbook (fenêtre active entre 1er et dernier WP).
+- **Interface** : Refonte des étiquettes de waypoints avec nomenclature officielle (WP Masqué, Eclipse, Visible, Caché, Navigation, Précision).
+- **Cartographie** : Intégration du type **WPP (Waypoint Précision)** avec couleur magenta distinctive.
+- **UI** : Optimisation de la hauteur de carte (aspect-ratio 1:1) pour une meilleure lisibilité terrain.
+- **Documentation** : Nouveau README professionnel orienté utilisateur final.
 
 ## [2.9.0.009] - 2026-04-20 (Mode Précision Fix)
 - **Scoring Engine** : Correction d'un bug majeur empêchant l'activation du corridor.
