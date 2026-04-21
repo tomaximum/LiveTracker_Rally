@@ -1284,6 +1284,54 @@ function initUI() {
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
+    // v3.1.9: Test button for Alert Chat ID
+    const testAlertChatBtn = document.getElementById('btn-test-alert-chat');
+    if (testAlertChatBtn) {
+        testAlertChatBtn.addEventListener('click', async () => {
+            const tokenEl = document.getElementById('s-token');
+            const chatIdEl = document.getElementById('s-alert-chat-id');
+            const statusEl = document.getElementById('alert-chat-test-status');
+
+            const token = tokenEl ? tokenEl.value.trim() : state.settings.telegramToken;
+            const chatId = chatIdEl ? chatIdEl.value.trim() : '';
+
+            statusEl.style.display = 'block';
+
+            if (!token) {
+                statusEl.textContent = '⚠️ Renseignez d\'abord le Token Telegram.';
+                statusEl.style.color = '#f59e0b';
+                return;
+            }
+            if (!chatId) {
+                statusEl.textContent = '⚠️ Entrez un ID de chat à tester.';
+                statusEl.style.color = '#f59e0b';
+                return;
+            }
+
+            statusEl.textContent = '⏳ Envoi en cours...';
+            statusEl.style.color = 'var(--text-muted)';
+
+            try {
+                const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text: '✅ Test LiveTracker : les alertes de suivi sont opérationnelles !', parse_mode: 'HTML' })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    statusEl.textContent = '✅ Message envoyé !';
+                    statusEl.style.color = '#10b981';
+                } else {
+                    statusEl.textContent = `❌ Erreur : ${res.description || 'Chat ID introuvable'}`;
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                statusEl.textContent = '❌ Erreur réseau.';
+                statusEl.style.color = '#ef4444';
+            }
+        });
+    }
+
     const clearTokenBtn = document.getElementById('btn-clear-token');
     if (clearTokenBtn) clearTokenBtn.addEventListener('click', clearTelegramToken);
 
