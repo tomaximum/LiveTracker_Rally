@@ -399,10 +399,6 @@
       <!-- Advanced / Maintenance -->
       <div class="modal-section">
         <div class="modal-section-title">🛠️ Avancé</div>
-        <div class="toggle-row" style="display: none;">
-          <span class="toggle-label">Activer le mode Simulation</span>
-          <label class="toggle"><input type="checkbox" id="s-simmode" /><span class="toggle-slider"></span></label>
-        </div>
         <div style="margin-top: 15px;">
           <button class="btn" id="btn-clear-db" style="width:100%; background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">
             🗑️ Vider la base de données
@@ -621,7 +617,6 @@
   <script src="js/rallyranking_bridge.js?v=3.1.9-testing"></script>
   <script src="js/secrets.js?v=3.1.9-testing"></script>
   <script src="js/app.js?v=3.1.9-testing"></script>
-  <script src="js/simulation.js?v=3.1.9-testing"></script>  <!-- PWA Service Worker Registration -->
   <script>
     const APP_VERSION = '3.1.9-testing';
     if ('serviceWorker' in navigator) {

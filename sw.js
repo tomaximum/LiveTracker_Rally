@@ -14,7 +14,6 @@ const ASSETS = [
   'js/mapCanvas.js',
   'js/rallyranking_bridge.js',
   'js/export.js',
-  'js/simulation.js',
   'js/storage.js',
   'js/telegram-client.js',
   'favicon.png',

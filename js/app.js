@@ -21,7 +21,6 @@ const state = {
         logInterval: 10,
         soundAlert: true,
         browserNotif: false,
-        simMode: false,
         showRadii: true,
         showPilotTraces: true,
         showWaypoints: true,
@@ -675,7 +674,7 @@ function renderParticipantList() {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📡</div>
-                <div class="empty-text">En attente de participants…<br>Activez la simulation ou connectez le bot.</div>
+                <div class="empty-text">En attente de participants (connectez le bot Telegram)...</div>
             </div>`;
         return;
     }
@@ -828,49 +827,7 @@ function renderAlertList() {
     });
 }
 
-/* ── Simulation ─────────────────────────────────────────────────────────────── */
-function startSimulation() {
-    if (state.simulation) { state.simulation.stop(); }
-    state.simulation = new SimulationEngine();
 
-    if (state.routePoints.length > 0) {
-        state.simulation.setRoute(state.routePoints);
-    }
-
-    state.simulation.onUpdate = (participants) => {
-        participants.forEach(p => updateParticipant(p));
-    };
-
-    state.simulation.start();
-    const badge = document.getElementById('sim-badge');
-    if (badge) badge.classList.add('visible');
-    
-    const btn = document.getElementById('btn-sim');
-    if (btn) btn.classList.add('active');
-}
-
-function stopSimulation() {
-    if (state.simulation) {
-        state.simulation.stop();
-        state.simulation = null;
-    }
-    // Clear participant markers and alerts
-    state.participants.forEach(p => state.map.removeLayer(p.marker));
-    state.participants.clear();
-    state.alertLog = [];
-    if (state.alertEngine && typeof state.alertEngine.clearAll === 'function') {
-        state.alertEngine.clearAll();
-    }
-    renderAlertList();
-    renderParticipantList();
-    updateStats();
-    
-    const badge = document.getElementById('sim-badge');
-    if (badge) badge.classList.remove('visible');
-    
-    const btn = document.getElementById('btn-sim');
-    if (btn) btn.classList.remove('active');
-}
 
 
 /* ── Screen Wake Lock (v1.2.0) ─────────────────────────────────────────────────── */
@@ -1006,8 +963,6 @@ function applySettings() {
     const sNotif = document.getElementById('s-notif');
     if (sNotif) sNotif.checked = state.settings.browserNotif;
 
-    const sSim = document.getElementById('s-simmode');
-    if (sSim) sSim.checked = state.settings.simMode;
 
     const sRadii = document.getElementById('s-show-radii');
     if (sRadii) sRadii.checked = state.settings.showRadii !== false;
@@ -1060,15 +1015,6 @@ function collectSettings() {
     const sNotif = document.getElementById('s-notif');
     if (sNotif) state.settings.browserNotif = sNotif.checked;
 
-    const sSim = document.getElementById('s-simmode');
-    if (sSim) {
-        const wasSim = state.settings.simMode;
-        state.settings.simMode = sSim.checked;
-        if (wasSim !== sSim.checked) {
-            if (sSim.checked) startSimulation();
-            else stopSimulation();
-        }
-    }
 
     const sRadii = document.getElementById('s-show-radii');
     if (sRadii) state.settings.showRadii = sRadii.checked;
