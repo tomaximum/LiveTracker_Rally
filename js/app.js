@@ -36,9 +36,10 @@ const state = {
     wakeLock: null
 };
 
-const TELEMETRY_URL = (typeof SECRETS !== 'undefined') ? SECRETS.GDRIVE_WEBHOOK_URL : '';
+// v3.1.2: Dynamic resolution to ensure SECRETS are loaded
+const getTelemetryUrl = () => (typeof SECRETS !== 'undefined') ? SECRETS.GDRIVE_WEBHOOK_URL : '';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.1.0-testing';
+const APP_VERSION = '3.1.2-testing';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initAlertEngine();
     initUI();
+    initDebugUI(); // v3.1.2
     applySettings();
 
     // Start Telegram Client if token exists
@@ -1342,7 +1344,12 @@ async function sendToDev(type, data) {
                 event_name: data.event_name,
                 ua: navigator.userAgent.slice(0, 100)
             };
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) {
+                console.warn('[DevStats] GDrive Webhook URL is missing from SECRETS.');
+                return;
+            }
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1359,7 +1366,9 @@ async function sendToDev(type, data) {
                 ua: navigator.userAgent.slice(0, 100)
             };
 
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) return;
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1374,7 +1383,9 @@ async function sendToDev(type, data) {
                 ua: navigator.userAgent.slice(0, 100)
             };
 
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) return;
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1604,23 +1615,88 @@ async function clearDatabase() {
  * 🛰️ Double Botting Service (v3.1.0)
  * Sends alerts to the administrative bot defined in GitHub Secrets.
  */
+/**
+ * 🛰️ Debug & Double Botting Service (v3.1.2)
+ * Tests connection and handles secret status.
+ */
+function initDebugUI() {
+    const badge = document.getElementById('secret-status-badge');
+    if (!badge) return;
+
+    if (typeof SECRETS !== 'undefined') {
+        const hasToken = SECRETS.TELEGRAM_ADMIN_TOKEN && !SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$');
+        const hasChat = SECRETS.TELEGRAM_ADMIN_CHAT_ID && !SECRETS.TELEGRAM_ADMIN_CHAT_ID.startsWith('$');
+        const hasDrive = SECRETS.GDRIVE_WEBHOOK_URL && !SECRETS.GDRIVE_WEBHOOK_URL.startsWith('$');
+
+        if (hasToken && hasChat && hasDrive) {
+            badge.textContent = 'Secrets Cloud : ACTIFS ✅';
+            badge.style.background = '#065f46';
+            badge.style.color = '#fff';
+        } else {
+            badge.textContent = 'Secrets Cloud : PARTIELS ⚠️';
+            badge.style.background = '#92400e';
+            badge.style.color = '#fff';
+            console.warn("LiveTrack: Some secrets are missing or not injected.", SECRETS);
+        }
+    } else {
+        badge.textContent = 'Secrets Cloud : ABSENTS ❌';
+        badge.style.background = '#991b1b';
+        badge.style.color = '#fff';
+    }
+
+    const testBtn = document.getElementById('btn-test-admin-bot');
+    if (testBtn) {
+        testBtn.onclick = async () => {
+            const status = document.getElementById('admin-test-status');
+            status.textContent = "⏳ Envoi en cours...";
+            status.style.color = "var(--text-muted)";
+            
+            const success = await sendTelegramAdmin("Ceci est un test de connexion du Bot Admin.");
+            if (success) {
+                status.textContent = "✅ Message de test envoyé !";
+                status.style.color = "#10b981";
+            } else {
+                status.textContent = "❌ Échec de l'envoi. Vérifiez vos secrets.";
+                status.style.color = "#ef4444";
+            }
+        };
+    }
+}
+
 async function sendTelegramAdmin(message) {
-    if (typeof SECRETS === 'undefined' || !SECRETS.TELEGRAM_ADMIN_TOKEN || !SECRETS.TELEGRAM_ADMIN_CHAT_ID) return;
+    if (typeof SECRETS === 'undefined' || !SECRETS.TELEGRAM_ADMIN_TOKEN || !SECRETS.TELEGRAM_ADMIN_CHAT_ID) {
+        console.error("Telemetry: Admin Bot parameters are missing.");
+        return false;
+    }
     
+    // Safety check for raw template strings
+    if (SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$')) {
+         console.warn("Telemetry: Secret placeholders detected. Please check GitHub Secrets.");
+         return false;
+    }
+
     const url = `https://api.telegram.org/bot${SECRETS.TELEGRAM_ADMIN_TOKEN}/sendMessage`;
     try {
-        await fetch(url, {
+        const resp = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_id: SECRETS.TELEGRAM_ADMIN_CHAT_ID,
-                text: `🚨 [LIVE ALERT] ${message}`,
+                text: `🚨 [LIVE TEST v3.1.2] ${message}`,
                 parse_mode: 'HTML'
             })
         });
-        console.log("Telemetry: Admin notification sent.");
+        const res = await resp.json();
+        if (res.ok) {
+            console.log("Telemetry: Admin notification sent successfully.");
+            return true;
+        } else {
+            console.error("Telemetry: Telegram API error", res);
+            return false;
+        }
     } catch (e) {
         console.error("Telemetry: Failed to send Admin notification", e);
+        return false;
     }
 }
 
