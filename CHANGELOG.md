@@ -1,6 +1,6 @@
 # 🚀 Journal des Modifications (CHANGELOG)
 
-## [3.1.10] - 2026-04-21 (testing)
+## [3.1.10] - 2026-04-21 (Stable)
 - **GPX Parser** : Fallback dynamique — si le GPX ne contient pas de tracé (`<trk>`), une route est automatiquement générée en reliant les waypoints.
 - **Scoring Engine** : Autorise le calcul de corridor sur les tracés générés (avec avertissement sur la précision).
 
@@ -82,4 +82,4 @@
 - Version de référence initiale.
 
 ---
-*Dernière mise à jour : 21/04/2026 — v3.1.10-testing*
+*Dernière mise à jour : 21/04/2026 — v3.1.10*

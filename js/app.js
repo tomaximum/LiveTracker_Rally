@@ -52,7 +52,7 @@ const getSecrets = () => {
 };
 
 const getTelemetryUrl = () => getSecrets().GDRIVE_WEBHOOK_URL || '';
-const APP_VERSION = '3.1.10-testing';
+const APP_VERSION = '3.1.10';
 
 /**
  * v3.1.5: Helper to ensure consistent folder naming on Google Drive (No spaces)

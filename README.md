@@ -1,6 +1,6 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-3.1.10--testing-orange)
+![Version](https://img.shields.io/badge/version-3.1.10--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-black)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://tomaximum.github.io/LiveTracker_Rally/)
@@ -205,4 +205,4 @@ Ce projet est sous licence **GNU GPL v3**. Toute modification ou redistribution 
 
 ---
 
-*Développé par Antigravity & Tomaximum — v3.1.10-testing*
+*Développé par Antigravity & Tomaximum — v3.1.10*
