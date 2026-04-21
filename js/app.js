@@ -177,7 +177,7 @@ function updateRouteStats(route) {
             if (typeof haversineDistance === 'function') {
                 dist += haversineDistance(route[i-1], route[i]) / 1000;
             }
-            if (route[i].ele !== undefined && route[i-1].ele !== undefined) {
+            if (route[i].ele !== null && route[i-1].ele !== null) {
                 const diff = route[i].ele - route[i-1].ele;
                 if (diff > 0) eleGain += diff;
             }

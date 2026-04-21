@@ -16,12 +16,14 @@ window.parseGPX = function(xmlText) {
             const lng = parseFloat(pt.getAttribute('lon'));
             if (!isNaN(lat) && !isNaN(lng)) {
                 const time = pt.querySelector('time');
+                const ele = pt.querySelector('ele');
                 let t = null;
                 if (time && time.textContent) {
                     t = new Date(time.textContent).getTime();
                 }
+                const e = (ele && ele.textContent) ? parseFloat(ele.textContent) : null;
                 // Fournir "lon" pour ScoringEngine (v2.3.1), "lng" pour Leaflet
-                points.push({ id: index, lat, lon: lng, lng: lng, time: t });
+                points.push({ id: index, lat, lon: lng, lng: lng, time: t, ele: e });
             }
         });
         const waypoints = parseWaypoints(xmlText);
@@ -35,7 +37,9 @@ window.parseGPX = function(xmlText) {
             const lat = parseFloat(pt.getAttribute('lat'));
             const lng = parseFloat(pt.getAttribute('lon'));
             if (!isNaN(lat) && !isNaN(lng)) {
-                points.push({ id: index, lat, lon: lng, lng: lng });
+                const ele = pt.querySelector('ele');
+                const e = ele && ele.textContent ? parseFloat(ele.textContent) : null;
+                points.push({ id: index, lat, lon: lng, lng: lng, ele: e });
             }
         });
         const waypoints = parseWaypoints(xmlText);
