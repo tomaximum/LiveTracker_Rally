@@ -48,4 +48,4 @@ Le projet est désormais sous licence **GNU GPL v3**. Toute modification ou redi
 - **Licence** : [GNU GPL v3](LICENSE).
 
 ---
-*Projet propulsé par la communauté — Version 3.0.0 Stable*
+*Projet propulsé par ToMaXimum et Antrigravity — Version 3.0.0 Stable*
