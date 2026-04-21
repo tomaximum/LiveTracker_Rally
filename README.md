@@ -26,29 +26,24 @@
 
 ## 🚀 Démarrage Rapide
 
-### 1. Déploiement
-Forkez ce dépôt et activez **GitHub Pages** (Settings > Pages > `testing` ou `master`).
+L'application est **prête à l'emploi** — aucun déploiement requis. Ouvrez simplement l'URL et configurez votre bot.
 
-### 2. Secrets GitHub
-Dans `Settings > Environments > github-pages > Secrets`, ajoutez :
+**👉 [Ouvrir LiveTrack Rally](https://tomaximum.github.io/LiveTracker_Rally/)**
 
-| Secret | Description |
-|--------|-------------|
-| `TELEGRAM_ADMIN_BOT_TOKEN` | Token du Bot Admin |
-| `TELEGRAM_ADMIN_CHAT_ID` | ID du chat Admin |
-| `GDRIVE_WEBHOOK_URL` | URL du Google Apps Script pour l'archivage Drive |
+### 1. Créer un Bot Telegram
+Contactez **@BotFather** sur Telegram et créez un nouveau bot. Copiez le token fourni.
 
-> ⚠️ Ces secrets sont injectés automatiquement à chaque déploiement dans `js/secrets.js`. Ne pas les commiter manuellement.
-
-### 3. Configuration App
+### 2. Configurer l'application
 Dans l'application (⚙️ Paramètres) :
-- **Token Telegram** : Token de votre bot de suivi pilotes (obtenu via @BotFather)
-- **ID Chat Alertes Tracking** *(optionnel)* : ID du groupe où recevoir les alertes SOS/Immobilité
+- **Token Telegram** : collez votre token de bot
+- **ID Chat Alertes** *(optionnel)* : ID du groupe où recevoir les alertes SOS/Immobilité
 
-### 4. Action
-1. Importez votre fichier GPX (OpenRally)
-2. Invitez vos pilotes à partager leur position via votre Bot Telegram
-3. Suivez en direct depuis la carte
+### 3. Lancer le suivi
+1. Importez votre fichier GPX (format OpenRally)
+2. Vos pilotes partagent leur position en live avec votre Bot Telegram
+3. Suivez en temps réel depuis la carte
+
+> 💡 **Pour héberger votre propre instance** avec vos propres secrets Admin et archivage Drive : forkez le dépôt, ajoutez vos Secrets GitHub (`TELEGRAM_ADMIN_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `GDRIVE_WEBHOOK_URL`) et activez GitHub Pages.
 
 ---
 
