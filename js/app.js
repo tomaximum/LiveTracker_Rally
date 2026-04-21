@@ -51,7 +51,7 @@ const getSecrets = () => {
 
 const getTelemetryUrl = () => getSecrets().GDRIVE_WEBHOOK_URL || '';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.1.5-testing';
+const APP_VERSION = '3.1.7-testing';
 
 /**
  * v3.1.5: Helper to ensure consistent folder naming on Google Drive (No spaces)
@@ -1369,7 +1369,7 @@ async function sendToDev(type, data) {
                 key: TELEMETRY_SECRET,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
-                event_name: data.event_name,
+                event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
                 ua: navigator.userAgent.slice(0, 100)
             };
             const url = getTelemetryUrl();
@@ -1407,7 +1407,7 @@ async function sendToDev(type, data) {
                 key: TELEMETRY_SECRET,
                 name: data.name || 'export_file',
                 file_b64: data.content,
-                event_name: data.event_name,
+                event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
                 ua: navigator.userAgent.slice(0, 100)
             };
 
