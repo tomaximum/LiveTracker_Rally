@@ -353,9 +353,14 @@
           <label>Token Telegram (API Bot)</label>
           <div style="display:flex; gap:8px;">
             <input type="password" id="s-token" placeholder="12345678:ABC-DEF..." style="flex:1;" />
+            <button id="btn-settings-test" class="btn" title="Tester la connexion du Bot"
+                    style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); padding:5px 12px; white-space:nowrap;">
+              🧪 Tester
+            </button>
             <button id="btn-clear-token" class="btn" title="Supprimer ce Token"
                     style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:5px 10px;">✖️</button>
           </div>
+          <div id="settings-test-status" style="font-size:11px; margin-top:5px; text-align:left; display:none;"></div>
         </div>
 
         <div class="form-group" id="alert-chat-group">
@@ -371,15 +376,6 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
             Si renseigné, recevez les SOS et alertes d'immobilité via votre Bot Tracking.
           </div>
-        </div>
-
-
-
-        <div id="token-test-section" style="margin-bottom:15px;">
-          <button class="btn btn-accent" id="btn-settings-test" style="width:100%; justify-content:center; font-size:12px;">
-            🚀 Tester la connexion du Bot (Suivi)
-          </button>
-          <div id="settings-test-status" style="font-size:11px; margin-top:6px; text-align:center; display:none;"></div>
         </div>
 
       </div>
