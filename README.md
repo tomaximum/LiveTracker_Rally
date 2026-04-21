@@ -215,9 +215,6 @@ LiveTracker_Rally/
 │   └── export.js                 # Export PDF/CSV
 ├── css/
 │   └── style.css
-├── .github/workflows/
-│   └── deploy.yml                # CI/CD : injection secrets + déploiement Pages
-└── GoogleAppsScript_Telemetry.js # Script Drive côté Google
 ```
 
 
