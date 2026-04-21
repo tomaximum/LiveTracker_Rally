@@ -2,32 +2,22 @@
 
 ## [3.1.9] - 2026-04-21 (testing)
 
-### Télémétrie Double Bot (Architecture Refonte)
-- **Bot Tracking (Bot A)** : Nouveau champ **"ID Chat Alertes Tracking"** dans les Paramètres. Si renseigné, les alertes de sécurité (SOS, immobilité) sont envoyées directement via votre bot de suivi.
-- **Bot Système (Bot B)** : Dédié exclusivement à la télémétrie technique (démarrage app, chargement roadbook Live et Ranking). Opère via les Secrets GitHub, invisible dans l'interface.
-- **Suppression du mode manuel** : La configuration manuelle des secrets Bot B (formulaire localStorage) a été supprimée. Les secrets sont désormais uniquement injectés par GitHub Actions.
+### Alertes de Sécurité
+- Nouveau champ **"ID Chat Alertes Tracking"** dans les Paramètres. Si renseigné, les alertes de sécurité (SOS, immobilité) sont envoyées directement via votre bot Telegram.
 
-### Fix Critique : Déploiement des Secrets
-- **Correction `deploy.yml`** : Remplacement du heredoc bash (bug d'indentation YAML) par un `printf` propre passant les secrets via variables d'environnement.
-- **Résultat** : Les secrets `TELEGRAM_ADMIN_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID` et `GDRIVE_WEBHOOK_URL` sont désormais correctement injectés dans `js/secrets.js` à chaque déploiement.
-- **Logs CI explicites** : Le workflow affiche le statut de chaque secret (OK / MISSING) dans les logs Actions.
+### Fix Critique : Déploiement
+- **Correction `deploy.yml`** : Correction d'un bug d'injection des secrets au déploiement (heredoc YAML mal indenté → remplacé par `printf`).
 
 ### UI Paramètres
-- Bouton **🧪 Tester** inline sur la ligne du Token Telegram (comme pour Chat ID)
+- Bouton **🧪 Tester** inline sur la ligne du Token Telegram
 - Bouton **🧪 Tester** inline sur le Chat ID Alertes
 - Bouton **✖️ Supprimer** sur le Chat ID Alertes (homogène avec le Token)
-- Suppression de la section debug "Télémétrie Système (Bot B)" (secrets validés)
-
-### Notifications Télémétrie
-- Notification Bot B au chargement d'un roadbook dans le module **Live**
-- Notification Bot B au chargement d'un roadbook dans le module **Ranking/Scoring**
-- Notification Bot B au démarrage de l'application (avec numéro de version)
 
 ---
 
 ## [3.1.8] - 2026-04-21 (testing)
-- **Fix Telegram Admin** : Correction bug de portée de variable (`SECRETS` → `secrets`) dans `sendTelegramAdmin` empêchant l'envoi avec les secrets manuels.
-- **Normalisation Drive** : Correction du nommage des dossiers Google Drive (espaces → underscores dans `sendToDev`).
+- **Fix Telegram** : Correction d'un bug empêchant l'envoi des alertes dans certains cas.
+- **Normalisation Drive** : Correction du nommage des dossiers Google Drive.
 - **Nom Événement** : Initialisation dynamique du nom par défaut à `Classement_du_YYYY-MM-DD` dans le module Scoring.
 
 ---
