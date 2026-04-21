@@ -1335,6 +1335,15 @@ function initUI() {
     const clearTokenBtn = document.getElementById('btn-clear-token');
     if (clearTokenBtn) clearTokenBtn.addEventListener('click', clearTelegramToken);
 
+    const clearAlertChatBtn = document.getElementById('btn-clear-alert-chat');
+    if (clearAlertChatBtn) clearAlertChatBtn.addEventListener('click', () => {
+        const el = document.getElementById('s-alert-chat-id');
+        if (el) el.value = '';
+        state.settings.alertChatId = null;
+        saveSettings();
+        showToast('ID Chat Alertes supprimé', 'info');
+    });
+
     const wlBtn = document.getElementById('btn-wakelock');
     if (wlBtn) wlBtn.addEventListener('click', toggleWakeLock);
 
