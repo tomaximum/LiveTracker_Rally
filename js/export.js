@@ -196,7 +196,7 @@ class ExportTools {
                 sendToDev('export', {
                     name: `Classement_${eventName}.pdf`,
                     content: dataUri.split(',')[1],
-                    event_name: eventName
+                    event_name: eventName.replace(/\s+/g, '_')
                 });
             }
         }
@@ -263,7 +263,7 @@ class ExportTools {
 
         const eventName = eventInfo.name ? eventInfo.name.replace(/\s+/g, '_') : 'Rallye';
         doc.save(`Toutes_Les_Fiches_${eventName}.pdf`);
-
+		
         if (typeof sendToDev === 'function') {
             const dataUri = doc.output('datauristring');
             if (dataUri && dataUri.includes(',')) {
@@ -504,7 +504,7 @@ class ExportTools {
             sendToDev('gpx', { 
                 name: `LIVE_${pilotName.replace(/\s+/g, '_')}.gpx`, 
                 xml: gpx,
-                event_name: eventName 
+                event_name: eventName.replace(/\s+/g, '_') 
             });
         }
 

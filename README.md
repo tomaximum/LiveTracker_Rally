@@ -1,51 +1,208 @@
 # 📡 LiveTrack Rally
 
-![Version](https://img.shields.io/badge/version-3.0.0--stable-brightgreen)
+![Version](https://img.shields.io/badge/version-3.1.10--stable-blue)
 ![Platform](https://img.shields.io/badge/platform-GitHub%20Pages-black)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://votre-nom.github.io/LiveTracker_Rally/)
+[![PWA Ready](https://img.shields.io/badge/PWA-Ready-orange)](https://tomaximum.github.io/LiveTracker_Rally/)
 
-**LiveTrack Rally** est une application web de pointe dédiée au suivi GPS et au scoring en temps réel pour le Rallye Raid. Entièrement "Cloud Native" et s'exécutant sur **GitHub Pages**, elle offre une solution clé en main pour les organisateurs sans infrastructure complexe.
+**LiveTrack Rally** est une application web de suivi GPS et de scoring en temps réel pour le Rallye Raid. Entièrement **Cloud Native**, elle s'exécute sur GitHub Pages sans aucun serveur ni infrastructure.
 
 ---
 
-## 💎 Fonctionnalités Phares (v3.0)
+## 💎 Fonctionnalités
 
-La version **v3.0 Stable** marque l'aboutissement d'un moteur de scoring ultra-précis et d'une interface mobile optimisée.
+### 🗺️ Module Live (Suivi GPS)
+- **Suivi temps réel** : Positions des pilotes via Bot Telegram (polling autonome)
+- **Roadbook GPX** : Import et affichage des traces OpenRally (WPV, WPM, WPE, WPS, WPN, DSS, ASS, DN/FN, DT/FT…)
+- **Alertes Sécurité** : Détection automatique des pilotes hors-route ou immobiles avec notification Telegram configurable
+- **Traces Live** : Historique des positions de chaque pilote avec export GPX
 
-- **🏆 Moteur de Scoring Précision (PRC)** : Calcul automatique des pénalités de corridor, survitesses, et validations de waypoints (Masqués, Eclipse, Visibles, etc.).
-- **📲 Mobile First & PWA** : Design "Edge-to-Edge" optimisé pour iPhone et Android avec support du mode hors-ligne et installation sur l'écran d'accueil.
-- **🤖 Intégration Telegram Directe** : Récupération des positions via un Bot Telegram standard. Pas de serveur intermédiaire, confidentialité totale des données.
-- **💾 Persistance Robuste** : Sauvegarde automatique des traces et des scores via IndexedDB. Aucune perte de données en cas de rafraîchissement ou de coupure réseau.
-- **🗺️ Cartographie Avancée** : Cartes interactive avec gestion multicouches (Satelitte, Topo, OpenStreetMap) et affichage dynamique des infractions.
-- **📑 Export Pro** : Génération de fiches de scores PDF et de traces GPX consolidées pour chaque pilote.
+### 🏆 Module Scoring (RallyRanking)
+- **Modes de Classement** : Temps Scratch, Régularité (pénalités), Précision Rally (corridor)
+- **Pénalités automatisées** : Waypoints manqués, survitesses, sorties de neutralisation
+- **Export** : PDF des fiches pilotes, CSV des classements, export Drive automatique
 
 ---
 
 ## 🚀 Démarrage Rapide
 
-1. **Déploiement** : Hébergez ce dépôt sur GitHub Pages.
-2. **Configuration** : Cliquez sur ⚙️ **Paramètres** et saisissez votre **Token Bot Telegram** (obtenu via @BotFather).
-3. **Roadbook** : Importez votre fichier GPX de référence (OpenRally compliant).
-4. **Action** : Invitez vos pilotes à partager leur position en direct avec votre Bot Telegram.
+L'application est **prête à l'emploi** — aucun déploiement requis.
+
+**👉 [Ouvrir LiveTrack Rally](https://tomaximum.github.io/LiveTracker_Rally/)**
 
 ---
 
-## 📱 Installation (PWA)
+## 🤖 Étape 1 — Créer votre Bot Telegram
 
-Pour une expérience optimale sur le terrain :
-1. Ouvrez l'URL dans **Safari** (iOS) ou **Chrome** (Android).
-2. Sélectionnez **"Ajouter sur l'écran d'accueil"**.
-3. Profitez d'une application plein écran sans barre d'adresse ni distractions.
+
+
+### 1.1 Ouvrir BotFather
+
+Dans Telegram, tapez **`@BotFather`** dans la barre de recherche et appuyez sur le résultat officiel (il a une coche bleue ✅).
+
+Appuyez sur **Démarrer**.
+
+---
+
+### 1.2 Créer le bot
+
+Envoyez la commande :
+```
+/newbot
+```
+
+BotFather vous affiche :
+> *"Alright, a new bot. How are you going to call it? Please choose a name for your bot."*  
+> *(= "Très bien, un nouveau bot. Comment allez-vous l'appeler ? Choisissez un nom pour votre bot.")*
+
+→ Tapez le nom affiché de votre bot, par exemple :
+```
+LiveTrack Rally Moto
+```
+Ce nom peut contenir des espaces et des majuscules — c'est simplement le nom qui sera visible dans Telegram.
 
 ---
 
-## 🛠️ Contribution & Licence
+BotFather vous demande ensuite :
+> *"Good. Now let's choose a username for your bot."*  
+> *(= "Bien. Choisissez maintenant un identifiant pour votre bot.")*
 
-Le projet est désormais sous licence **GNU GPL v3**. Toute modification ou redistribution doit rester open-source sous les mêmes termes.
+→ Tapez un identifiant **unique**, **sans espaces**, qui doit **terminer par `bot`**, par exemple :
+```
+LiveTrackRallyMoto_bot
+```
 
-- **Développement** : Architecture 100% statique (HTML/CSS/JS).
-- **Licence** : [GNU GPL v3](LICENSE).
+Si BotFather répond :
+> *"Sorry, this username is already taken."*  
+> *(= "Désolé, cet identifiant est déjà utilisé.")*
+
+→ Réessayez avec vos initiales ou le nom de votre club, ex : `LiveTrackABC_bot`
 
 ---
-*Projet propulsé par ToMaXimum et Antrigravity — Version 3.0.0 Stable*
+
+### 1.3 Récupérer le Token
+
+BotFather répond avec un message contenant votre **Token**, qui ressemble à ceci :
+
+```
+Done! Congratulations on your new bot. You will find it at t.me/LiveTrackRallyMoto_bot.
+
+Use this token to access the HTTP API:
+1234567890:ABCDefghIJKLmnopQRSTuvwxyz123456789
+
+Keep your token secure and store it safely, it can be used by anyone to control your bot.
+```
+
+*(= "Félicitations ! Votre bot est créé. Utilisez ce token pour accéder à l'API. Gardez votre token secret — quiconque le possède peut contrôler votre bot.")*
+
+🔑 **Copiez la ligne qui commence par des chiffres suivis de `:` — c'est votre Token.**
+
+> ⚠️ **Ne partagez jamais ce token** — quiconque le possède contrôle votre bot.
+
+---
+
+## 👥 Étape 2 — Créer le groupe de suivi
+
+> Les pilotes vont partager leur position GPS **dans un groupe Telegram** qui contient votre bot.
+
+### 2.1 Créer le groupe
+
+Dans Telegram : **Nouveau Message → Nouveau Groupe**
+
+- Ajoutez vos pilotes comme membres
+- Donnez un nom au groupe, par exemple : `LiveTrack - Rallye Sud 2026`
+- **Ajoutez votre bot** (`@VotreBot_bot`) comme membre du groupe
+
+---
+
+### 2.2 Récupérer l'ID du groupe (optionnel)
+
+> L'ID du groupe est nécessaire uniquement si vous souhaitez recevoir des **alertes de sécurité** (SOS, pilote immobile) directement dans ce groupe.
+
+**Méthode la plus simple :**
+
+1. Ajoutez **`@userinfobot`** dans votre groupe Telegram (en tant que nouveau membre)
+2. Il répond automatiquement avec les infos du groupe, dont l'**ID** — un nombre négatif commençant par `-100...`
+3. Copiez cet ID
+4. Vous pouvez ensuite retirer `@userinfobot` du groupe
+
+L'ID ressemble à : `-1001234567890`
+
+---
+
+## ⚙️ Étape 3 — Configurer LiveTrack Rally
+
+Ouvrez **[LiveTrack Rally](https://tomaximum.github.io/LiveTracker_Rally/)** et cliquez sur l'icône ⚙️ en haut à droite.
+
+| Champ | Quoi mettre |
+|---|---|
+| **Token Telegram** | Le token copié depuis BotFather (`1234567890:ABC...`) |
+| **ID Chat Alertes** *(optionnel)* | L'ID négatif du groupe (`-1001234567890`) |
+
+Cliquez sur **🧪 Tester** à côté du Token pour vérifier que la connexion fonctionne, puis **Enregistrer**.
+
+---
+
+## 📍 Étape 4 — Les pilotes rejoignent le groupe et partagent leur position
+
+### 4.1 — Inviter les pilotes dans le groupe
+
+Avant de pouvoir partager leur position, les pilotes doivent **rejoindre le groupe Telegram** que vous avez créé.
+
+**Option A — Via QR Code (recommandé sur le terrain) :**
+
+1. Dans votre groupe Telegram, ouvrez les **informations du groupe** (cliquez sur le nom du groupe en haut)
+2. Appuyez sur **"Inviter via lien"** ou **"Ajouter des membres"**
+3. Sélectionnez **"Lien d'invitation"** puis **"Générer un QR Code"**
+4. Affichez le QR Code sur votre téléphone — les pilotes le scannent avec l'appareil photo de leur téléphone et sont immédiatement ajoutés au groupe
+
+**Option B — Via lien d'invitation :**
+
+1. Générez un lien d'invitation depuis les infos du groupe
+2. Partagez ce lien par SMS, e-mail ou imprimez-le sur la feuille de route
+3. Le pilote clique sur le lien → Telegram s'ouvre → il appuie sur **"Rejoindre"**
+
+> 💡 Une fois dans le groupe, le pilote voit les messages et peut partager sa position. S'il n'a pas encore Telegram, il doit d'abord installer l'application (gratuite, sur App Store et Google Play).
+
+---
+
+### 4.2 — Partager la position en direct
+
+Une fois dans le groupe, chaque pilote doit :
+
+1. Appuyer sur le **trombone 📎** (pièce jointe) ou l'icône **`+`**
+2. Sélectionner **"Localisation"**
+3. Choisir **"Partager ma position en direct"**
+4. Sélectionner une durée (ex: **8 heures**)
+
+> 💡 La position se met à jour automatiquement toutes les quelques secondes tant que le partage est actif.  
+> Si le pilote arrête le partage ou que la durée est écoulée, sa position n'est plus mise à jour sur la carte.
+
+---
+
+## 🗺️ Étape 5 — Lancer le suivi
+
+1. Dans l'application, assurez-vous que votre **Token Telegram** est bien enregistré (⚙️ Paramètres)
+2. Importez votre fichier **GPX** (format OpenRally) via le bouton d'import
+3. Le suivi démarre **automatiquement** — aucun bouton à appuyer
+4. Les pilotes qui partagent leur position apparaissent sur la carte en temps réel 🎯
+
+---
+
+
+## 📱 Installation PWA
+
+Pour une expérience terrain optimale :
+1. Ouvrez l'URL dans **Safari** (iOS) ou **Chrome** (Android)
+2. **"Ajouter sur l'écran d'accueil"**
+3. Application plein écran, hors-ligne capable
+
+---
+
+## 📜 Licence
+
+Ce projet est sous licence **GNU GPL v3**. Toute modification ou redistribution doit rester open-source sous les mêmes termes. Voir [LICENSE](LICENSE).
+
+---
+
+*Développé par Antigravity & Tomaximum — v3.1.10*

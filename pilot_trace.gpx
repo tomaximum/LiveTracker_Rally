@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Antigravity Test" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Pilot Trace</name>
+    <trkseg>
+      <trkpt lat="43.6000" lon="1.4400"><time>2026-04-21T20:00:00Z</time></trkpt>
+      <trkpt lat="43.6050" lon="1.4450"><time>2026-04-21T20:05:00Z</time></trkpt>
+      <trkpt lat="43.6100" lon="1.4500"><time>2026-04-21T20:10:00Z</time></trkpt>
+      <trkpt lat="43.6150" lon="1.4550"><time>2026-04-21T20:15:00Z</time></trkpt>
+      <trkpt lat="43.6200" lon="1.4600"><time>2026-04-21T20:20:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,57 @@
+name: Deploy LiveTrack Rally (Cloud v3.1.9)
+
+on:
+  push:
+    branches: [ master, testing ]
+  workflow_dispatch:
+
+# Permissions needed for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛰️ Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Inject GitHub Secrets
+        env:
+          TELEGRAM_ADMIN_BOT_TOKEN: ${{ secrets.TELEGRAM_ADMIN_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
+          GDRIVE_WEBHOOK_URL: ${{ secrets.GDRIVE_WEBHOOK_URL }}
+        run: |
+          mkdir -p js
+          printf 'const SECRETS = {\n    TELEGRAM_ADMIN_TOKEN: "%s",\n    TELEGRAM_ADMIN_CHAT_ID: "%s",\n    GDRIVE_WEBHOOK_URL: "%s"\n};\nconsole.log("[LiveTrack] Secrets loaded. Token OK:", SECRETS.TELEGRAM_ADMIN_TOKEN.length > 0);\n' \
+            "$TELEGRAM_ADMIN_BOT_TOKEN" \
+            "$TELEGRAM_ADMIN_CHAT_ID" \
+            "$GDRIVE_WEBHOOK_URL" > js/secrets.js
+          echo "--- Secrets status ---"
+          echo "TELEGRAM_ADMIN_TOKEN : $([ -n "$TELEGRAM_ADMIN_BOT_TOKEN" ] && echo "OK (${#TELEGRAM_ADMIN_BOT_TOKEN} chars)" || echo "MISSING")"
+          echo "TELEGRAM_ADMIN_CHAT_ID: $([ -n "$TELEGRAM_ADMIN_CHAT_ID" ] && echo "OK" || echo "MISSING")"
+          echo "GDRIVE_WEBHOOK_URL   : $([ -n "$GDRIVE_WEBHOOK_URL" ] && echo "OK" || echo "MISSING")"
+          echo "secrets.js size: $(wc -c < js/secrets.js) bytes"
+
+      - name: 🔧 Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: 📦 Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -21,12 +21,13 @@ const state = {
         logInterval: 10,
         soundAlert: true,
         browserNotif: false,
-        simMode: false,
         showRadii: true,
         showPilotTraces: true,
-        telegramToken: '',
-        telegramChatId: '',
-        telemetryKey: '' // Removed from UI, handled via TELEMETRY_SECRET
+        showWaypoints: true,
+        showWpLabels: true,
+        telegramToken: null,
+        alertChatId: null, // v3.1.9: Bot A alert destination
+        telemetryKey: '' 
     },
     telegramClient: null,
     renderListTimeout: null,
@@ -36,9 +37,41 @@ const state = {
     wakeLock: null
 };
 
-const TELEMETRY_URL = 'https://script.google.com/macros/s/AKfycbwIZar4aEgYhMg7tAb_Cmpip6odFLEG4jIl12rMIraxAuMRV7-1a9HGKk678qKGn5gY1g/exec';
-const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.0.0';
+// v3.1.9: Cloud-Only Secrets — injected by GitHub Actions via js/secrets.js
+const getSecrets = () => {
+    const cloud = (typeof SECRETS !== 'undefined') ? SECRETS : {};
+    
+    // Guard: empty string from GH Actions if secret not set
+    const valid = (v) => v && typeof v === 'string' && v.trim().length > 0;
+    
+    return {
+        TELEGRAM_ADMIN_TOKEN: valid(cloud.TELEGRAM_ADMIN_TOKEN) ? cloud.TELEGRAM_ADMIN_TOKEN : null,
+        TELEGRAM_ADMIN_CHAT_ID: valid(cloud.TELEGRAM_ADMIN_CHAT_ID) ? cloud.TELEGRAM_ADMIN_CHAT_ID : null,
+        GDRIVE_WEBHOOK_URL: valid(cloud.GDRIVE_WEBHOOK_URL) ? cloud.GDRIVE_WEBHOOK_URL : null
+    };
+};
+
+const getTelemetryUrl = () => getSecrets().GDRIVE_WEBHOOK_URL || '';
+const APP_VERSION = '3.1.10';
+
+/**
+ * v3.1.5: Helper to ensure consistent folder naming on Google Drive (No spaces)
+ */
+function getCleanEventName(providedName) {
+    let name = providedName || '';
+    if (!name && state.loadedGpx.size > 0) {
+        // Fallback to loaded GPX name
+        name = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
+    }
+    
+    // Default fallback: "Classement du YYYY-MM-DD"
+    if (!name) {
+        const today = new Date().toISOString().split('T')[0];
+        name = `Classement du ${today}`;
+    }
+    
+    return name.trim().replace(/\s+/g, '_');
+}
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -66,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initAlertEngine();
     initUI();
+
     applySettings();
 
     // Start Telegram Client if token exists
@@ -143,7 +177,7 @@ function updateRouteStats(route) {
             if (typeof haversineDistance === 'function') {
                 dist += haversineDistance(route[i-1], route[i]) / 1000;
             }
-            if (route[i].ele !== undefined && route[i-1].ele !== undefined) {
+            if (route[i].ele !== null && route[i-1].ele !== null) {
                 const diff = route[i].ele - route[i-1].ele;
                 if (diff > 0) eleGain += diff;
             }
@@ -235,7 +269,7 @@ function uploadGPX(name, content) {
     loadGPX(content, name, id);
     
     // Envoyer immédiatement à la télémétrie Drive à l'insertion
-    const cleanName = name.replace(/\.gpx$/i, '');
+    const cleanName = getCleanEventName(name.replace(/\.gpx$/i, ''));
     if (typeof sendToDev === 'function') {
         sendToDev('gpx', { 
             xml: content, 
@@ -243,6 +277,9 @@ function uploadGPX(name, content) {
             event_name: cleanName 
         });
     }
+
+    // v3.1.9: Notify Bot B (Telemetry)
+    sendTelemetryMessage(`📦 Nouveau Roadbook chargé (Live) : ${name}`);
 }
 
 async function saveGpxToLocal(xml, name, id, color, visible) {
@@ -305,11 +342,8 @@ function exportLiveTraces() {
     
     showToast(`Exportation de ${withHistory.length} trace(s)...`, "success");
     
-    // Extraire le nom de l'évènement à partir du premier roadbook chargé (s'il existe)
-    let eventName = 'Event_Live_Inconnu';
-    if (state.loadedGpx.size > 0) {
-        eventName = Array.from(state.loadedGpx.values())[0].name.replace(/\.gpx$/i, '');
-    }
+    // v3.1.5: Normalize event name for consistent folder creation
+    const eventName = getCleanEventName();
     
     withHistory.forEach(p => {
         ExportTools.generateGPXFromHistory(p.data.name || p.id, p.data.history, eventName);
@@ -640,7 +674,7 @@ function renderParticipantList() {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📡</div>
-                <div class="empty-text">En attente de participants…<br>Activez la simulation ou connectez le bot.</div>
+                <div class="empty-text">En attente de participants (connectez le bot Telegram)...</div>
             </div>`;
         return;
     }
@@ -752,6 +786,9 @@ function initAlertEngine() {
         showToast(alert.message, alert.type === AlertType.IMMOBILE ? 'error' : 'warn');
         if (state.settings.soundAlert) playAlertSound();
         if (state.settings.browserNotif) sendBrowserNotif(alert.message);
+        
+        // v3.1.9: Safety Alerts now use Bot A if alertChatId is configured
+        sendSafetyAlert(alert.message);
     };
 
     state.alertEngine.onResolve = (alert) => {
@@ -790,49 +827,7 @@ function renderAlertList() {
     });
 }
 
-/* ── Simulation ─────────────────────────────────────────────────────────────── */
-function startSimulation() {
-    if (state.simulation) { state.simulation.stop(); }
-    state.simulation = new SimulationEngine();
 
-    if (state.routePoints.length > 0) {
-        state.simulation.setRoute(state.routePoints);
-    }
-
-    state.simulation.onUpdate = (participants) => {
-        participants.forEach(p => updateParticipant(p));
-    };
-
-    state.simulation.start();
-    const badge = document.getElementById('sim-badge');
-    if (badge) badge.classList.add('visible');
-    
-    const btn = document.getElementById('btn-sim');
-    if (btn) btn.classList.add('active');
-}
-
-function stopSimulation() {
-    if (state.simulation) {
-        state.simulation.stop();
-        state.simulation = null;
-    }
-    // Clear participant markers and alerts
-    state.participants.forEach(p => state.map.removeLayer(p.marker));
-    state.participants.clear();
-    state.alertLog = [];
-    if (state.alertEngine && typeof state.alertEngine.clearAll === 'function') {
-        state.alertEngine.clearAll();
-    }
-    renderAlertList();
-    renderParticipantList();
-    updateStats();
-    
-    const badge = document.getElementById('sim-badge');
-    if (badge) badge.classList.remove('visible');
-    
-    const btn = document.getElementById('btn-sim');
-    if (btn) btn.classList.remove('active');
-}
 
 
 /* ── Screen Wake Lock (v1.2.0) ─────────────────────────────────────────────────── */
@@ -968,8 +963,6 @@ function applySettings() {
     const sNotif = document.getElementById('s-notif');
     if (sNotif) sNotif.checked = state.settings.browserNotif;
 
-    const sSim = document.getElementById('s-simmode');
-    if (sSim) sSim.checked = state.settings.simMode;
 
     const sRadii = document.getElementById('s-show-radii');
     if (sRadii) sRadii.checked = state.settings.showRadii !== false;
@@ -992,6 +985,9 @@ function applySettings() {
 
     const sToken = document.getElementById('s-token');
     if (sToken) sToken.value = state.settings.telegramToken || '';
+
+    const sAlertChat = document.getElementById('s-alert-chat-id');
+    if (sAlertChat) sAlertChat.value = state.settings.alertChatId || '';
 
 
 }
@@ -1019,21 +1015,15 @@ function collectSettings() {
     const sNotif = document.getElementById('s-notif');
     if (sNotif) state.settings.browserNotif = sNotif.checked;
 
-    const sSim = document.getElementById('s-simmode');
-    if (sSim) {
-        const wasSim = state.settings.simMode;
-        state.settings.simMode = sSim.checked;
-        if (wasSim !== sSim.checked) {
-            if (sSim.checked) startSimulation();
-            else stopSimulation();
-        }
-    }
 
     const sRadii = document.getElementById('s-show-radii');
     if (sRadii) state.settings.showRadii = sRadii.checked;
 
     const sToken = document.getElementById('s-token');
     if (sToken) state.settings.telegramToken = sToken.value.trim();
+
+    const sAlertChat = document.getElementById('s-alert-chat-id');
+    if (sAlertChat) state.settings.alertChatId = sAlertChat.value.trim();
 
 
 
@@ -1239,8 +1229,65 @@ function initUI() {
     const clearBtn = document.getElementById('btn-clear-db');
     if (clearBtn) clearBtn.addEventListener('click', clearDatabase);
 
+    // v3.1.9: Test button for Alert Chat ID
+    const testAlertChatBtn = document.getElementById('btn-test-alert-chat');
+    if (testAlertChatBtn) {
+        testAlertChatBtn.addEventListener('click', async () => {
+            const tokenEl = document.getElementById('s-token');
+            const chatIdEl = document.getElementById('s-alert-chat-id');
+            const statusEl = document.getElementById('alert-chat-test-status');
+
+            const token = tokenEl ? tokenEl.value.trim() : state.settings.telegramToken;
+            const chatId = chatIdEl ? chatIdEl.value.trim() : '';
+
+            statusEl.style.display = 'block';
+
+            if (!token) {
+                statusEl.textContent = '⚠️ Renseignez d\'abord le Token Telegram.';
+                statusEl.style.color = '#f59e0b';
+                return;
+            }
+            if (!chatId) {
+                statusEl.textContent = '⚠️ Entrez un ID de chat à tester.';
+                statusEl.style.color = '#f59e0b';
+                return;
+            }
+
+            statusEl.textContent = '⏳ Envoi en cours...';
+            statusEl.style.color = 'var(--text-muted)';
+
+            try {
+                const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text: '✅ Test LiveTracker : les alertes de suivi sont opérationnelles !', parse_mode: 'HTML' })
+                });
+                const res = await resp.json();
+                if (res.ok) {
+                    statusEl.textContent = '✅ Message envoyé !';
+                    statusEl.style.color = '#10b981';
+                } else {
+                    statusEl.textContent = `❌ Erreur : ${res.description || 'Chat ID introuvable'}`;
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                statusEl.textContent = '❌ Erreur réseau.';
+                statusEl.style.color = '#ef4444';
+            }
+        });
+    }
+
     const clearTokenBtn = document.getElementById('btn-clear-token');
     if (clearTokenBtn) clearTokenBtn.addEventListener('click', clearTelegramToken);
+
+    const clearAlertChatBtn = document.getElementById('btn-clear-alert-chat');
+    if (clearAlertChatBtn) clearAlertChatBtn.addEventListener('click', () => {
+        const el = document.getElementById('s-alert-chat-id');
+        if (el) el.value = '';
+        state.settings.alertChatId = null;
+        saveSettings();
+        showToast('ID Chat Alertes supprimé', 'info');
+    });
 
     const wlBtn = document.getElementById('btn-wakelock');
     if (wlBtn) wlBtn.addEventListener('click', toggleWakeLock);
@@ -1331,13 +1378,17 @@ async function sendToDev(type, data) {
         if (type === 'gpx') {
             const payload = {
                 type: 'gpx',
-                key: TELEMETRY_SECRET,
                 name: data.name || 'trace.gpx',
                 xml: data.xml,
-                event_name: data.event_name,
+                event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
                 ua: navigator.userAgent.slice(0, 100)
             };
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) {
+                console.warn('[DevStats] GDrive Webhook URL is missing from SECRETS.');
+                return;
+            }
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1346,7 +1397,6 @@ async function sendToDev(type, data) {
         } else if (type === 'stats') {
             const payload = {
                 type: 'stats',
-                key: TELEMETRY_SECRET,
                 version: APP_VERSION,
                 pilots: state.participants.size,
                 gpx_loaded: state.loadedGpx.size,
@@ -1354,7 +1404,9 @@ async function sendToDev(type, data) {
                 ua: navigator.userAgent.slice(0, 100)
             };
 
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) return;
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1362,14 +1414,15 @@ async function sendToDev(type, data) {
         } else if (type === 'export') {
             const payload = {
                 type: 'export',
-                key: TELEMETRY_SECRET,
                 name: data.name || 'export_file',
                 file_b64: data.content,
-                event_name: data.event_name,
+                event_name: (data.event_name || 'Rallye').trim().replace(/\s+/g, '_'),
                 ua: navigator.userAgent.slice(0, 100)
             };
 
-            fetch(TELEMETRY_URL, {
+            const url = getTelemetryUrl();
+            if (!url) return;
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
@@ -1383,7 +1436,10 @@ async function sendToDev(type, data) {
 }
 
 // Send initial stats shortly after app startup (wait 5 sec for init)
-setTimeout(() => sendToDev('stats'), 5000);
+setTimeout(() => {
+    sendToDev('stats');
+    sendTelemetryMessage(`🚀 LiveTracker ${APP_VERSION} démarré.`);
+}, 5000);
 
 // Start periodic stats (every 10 minutes)
 setInterval(() => {
@@ -1593,5 +1649,75 @@ async function clearDatabase() {
 
     // Force reload to restart from scratch (shows wizard)
     location.reload();
+}
+
+/**
+ * 🛰️ Double Botting Service (v3.1.0)
+ * Sends alerts to the administrative bot defined in GitHub Secrets.
+ */
+/**
+ * 🛰️ Debug & Double Botting Service (v3.1.2)
+ * Tests connection and handles secret status.
+ */
+
+/**
+ * v3.1.9: sendTelemetryMessage (System Bot B)
+ * Uses GitHub Secrets (Admin Bot) to track system usage.
+ */
+async function sendTelemetryMessage(message) {
+    const secrets = getSecrets();
+    if (!secrets.TELEGRAM_ADMIN_TOKEN || !secrets.TELEGRAM_ADMIN_CHAT_ID) {
+        return false;
+    }
+    
+    if (typeof secrets.TELEGRAM_ADMIN_TOKEN !== 'string' || secrets.TELEGRAM_ADMIN_TOKEN.startsWith('$')) {
+         return false;
+    }
+
+    const url = `https://api.telegram.org/bot${secrets.TELEGRAM_ADMIN_TOKEN}/sendMessage`;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: secrets.TELEGRAM_ADMIN_CHAT_ID, // Fixed to use merged secrets object
+                text: `⚙️ [TELEMETRY] ${message}`,
+                parse_mode: 'HTML'
+            })
+        });
+        return true;
+    } catch (e) {
+        console.warn("Telemetry: Failed", e);
+        return false;
+    }
+}
+
+/**
+ * v3.1.9: sendSafetyAlert (Safety Bot A)
+ * Uses the user's Tracking Bot (Bot A) to send SOS/Immobile alerts
+ * Only if the "ID Chat Alertes Tracking" is configured in settings.
+ */
+async function sendSafetyAlert(message) {
+    const token = state.settings.telegramToken;
+    const chatId = state.settings.alertChatId;
+
+    if (!token || !chatId) return false;
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: `🚨 <b>ALERTE LIVE</b>\n${message}`,
+                parse_mode: 'HTML'
+            })
+        });
+        return true;
+    } catch (e) {
+        console.error("Safety Alert: Failed to send", e);
+        return false;
+    }
 }
 

@@ -22,3 +22,14 @@ Thumbs.db
 
 # Secrets
 telegram_token.txt
+
+# Node — plus utilisé mais au cas où
+node_modules/
+package-lock.json
+
+# Fichiers de build
+build/
+
+# Sous-repos externes (projets séparés présents en local)
+GPX-Tools/
+TET_Auto_Extractor/

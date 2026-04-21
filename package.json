@@ -1,6 +1,6 @@
 {
   "name": "livetracker-rally",
-  "version": "3.0.0",
+  "version": "3.1.10",
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "jsdom": "^29.0.1"

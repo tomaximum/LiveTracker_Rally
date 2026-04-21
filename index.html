@@ -4,16 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LiveTrack Rally v3.0.0 — Live Tracking & Scoring</title>
+  <title>LiveTrack Rally v3.1.10 — Live Tracking & Scoring</title>
   <meta name="description"
-    content="La version v3.0.0 est 100% statique. Tout se passe directement dans votre navigateur :
-- Pas de serveur : Aucune installation Python (PC/Mac) n'est requise.
-- Autonomie : Assistant de configuration Telegram V2 intégré." />
+    content="Version v3.1.10 Cloud : Suivi en direct et calcul automatique des classements rallye (GPX) sans serveur." />
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- App CSS -->
-  <link rel="stylesheet" href="css/style.css?v=3.0.0" />
+  <link rel="stylesheet" href="css/style.css?v=3.1.10-testing" />
   <!-- PWA -->
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="favicon.png" />
@@ -34,7 +32,7 @@
       <button id="mobile-menu-btn" class="btn" style="display:none;padding:5px 10px;font-size:18px">☰</button>
       <div class="logo">
         <div class="dot">📡</div>
-        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;" class="hide-mobile">v3.0.0</span>
+        Tom's Rally Live Tracker <span style="font-size:10px; opacity:0.6; margin-left:5px; font-weight:normal;" class="hide-mobile">v3.1.10</span>
       </div>
 
       <div class="topbar-spacer"></div>
@@ -149,7 +147,7 @@
       </div>
       <!-- Version Footer -->
       <div style="margin-top:auto;padding:12px;font-size:10px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center;">
-        <em>Développé par Antigravity et Tomaximum — Version 3.0.0 (Cloud ☁️)</em><br>
+        <em>Développé par Antigravity et Tomaximum — Version 3.1.10-testing (Cloud ☁️)</em><br>
         <small>Licence MIT — <a href="LICENSE" style="color:var(--text-secondary)">Voir la licence</a></small>
       </div>
       </div> <!-- End tab-live -->
@@ -353,20 +351,35 @@
           <label>Token Telegram (API Bot)</label>
           <div style="display:flex; gap:8px;">
             <input type="password" id="s-token" placeholder="12345678:ABC-DEF..." style="flex:1;" />
+            <button id="btn-settings-test" class="btn" title="Tester la connexion du Bot"
+                    style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); padding:5px 12px; white-space:nowrap;">
+              🧪 Tester
+            </button>
             <button id="btn-clear-token" class="btn" title="Supprimer ce Token"
                     style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:5px 10px;">✖️</button>
           </div>
+          <div id="settings-test-status" style="font-size:11px; margin-top:5px; text-align:left; display:none;"></div>
         </div>
 
-
-
-        <div style="margin-bottom:15px;">
-          <button class="btn btn-accent" id="btn-settings-test" style="width:100%; justify-content:center; font-size:12px;">
-            🚀 Tester la connexion du Bot
-          </button>
-          <div id="settings-test-status" style="font-size:11px; margin-top:6px; text-align:center; display:none;"></div>
+        <div class="form-group" id="alert-chat-group">
+          <label>ID Chat Alertes Tracking (Optionnel)</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="s-alert-chat-id" placeholder="-100123456789..." style="flex:1;" />
+            <button id="btn-test-alert-chat" class="btn" title="Envoyer un message test"
+                    style="background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.3); padding:5px 12px; white-space:nowrap;">
+              🧪 Tester
+            </button>
+            <button id="btn-clear-alert-chat" class="btn" title="Supprimer cet ID"
+                    style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:5px 10px;">✖️</button>
+          </div>
+          <div id="alert-chat-test-status" style="font-size:11px;margin-top:5px;display:none;"></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Si renseigné, recevez les SOS et alertes d'immobilité via votre Bot Tracking.
+          </div>
         </div>
+
       </div>
+
 
       <!-- Notifications -->
       <div class="modal-section">
@@ -384,10 +397,6 @@
       <!-- Advanced / Maintenance -->
       <div class="modal-section">
         <div class="modal-section-title">🛠️ Avancé</div>
-        <div class="toggle-row" style="display: none;">
-          <span class="toggle-label">Activer le mode Simulation</span>
-          <label class="toggle"><input type="checkbox" id="s-simmode" /><span class="toggle-slider"></span></label>
-        </div>
         <div style="margin-top: 15px;">
           <button class="btn" id="btn-clear-db" style="width:100%; background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">
             🗑️ Vider la base de données
@@ -503,7 +512,7 @@
         <form id="rr-config-form">
             <div class="form-group" style="margin-bottom:15px;">
                 <label style="display:block;margin-bottom:5px;font-size:12px;">🏁 Nom de l'événement</label>
-                <input type="text" id="rr-cfg-name" value="Formation Roadbook AxeQuad" style="padding:8px; border-radius:4px; border:1px solid #ff4d4f; outline:none;">
+                <input type="text" id="rr-cfg-name" value="" placeholder="Nom de l'épreuve..." style="padding:8px; border-radius:4px; border:1px solid #ff4d4f; outline:none;">
             </div>
 
             <div class="form-group" style="margin-bottom:15px;">
@@ -591,23 +600,23 @@
   <!-- ── Scripts (Consolidated & Cache-Busted) ─────────────────── -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="js/geo.js?v=3.0.0"></script>
-  <script src="js/gpx.js?v=3.0.0"></script>
-  <script src="js/alerts.js?v=3.0.0"></script>
-  <script src="js/qrcode.min.js?v=3.0.0"></script>
-  <script src="js/telegram-client.js?v=3.0.0"></script>
-  <script src="js/storage.js?v=3.0.0"></script>
-  <script src="js/scoring.js?v=3.0.0"></script>
-  <script src="js/parser.js?v=3.0.0"></script>
-  <script src="js/mapCanvas.js?v=3.0.0"></script>
-  <script src="js/export.js?v=3.0.0"></script>
-  <script src="js/wizard.js?v=3.0.0"></script>
-  <script src="js/map.js?v=3.0.0"></script>
-  <script src="js/rallyranking_bridge.js?v=3.0.0"></script>
-  <script src="js/app.js?v=3.0.0"></script>
-  <script src="js/simulation.js?v=3.0.0"></script>  <!-- PWA Service Worker Registration -->
+  <script src="js/geo.js?v=3.1.10-testing"></script>
+  <script src="js/gpx.js?v=3.1.10-testing"></script>
+  <script src="js/alerts.js?v=3.1.10-testing"></script>
+  <script src="js/qrcode.min.js?v=3.1.10-testing"></script>
+  <script src="js/telegram-client.js?v=3.1.10-testing"></script>
+  <script src="js/storage.js?v=3.1.10-testing"></script>
+  <script src="js/scoring.js?v=3.1.10-testing"></script>
+  <script src="js/parser.js?v=3.1.10-testing"></script>
+  <script src="js/mapCanvas.js?v=3.1.10-testing"></script>
+  <script src="js/export.js?v=3.1.10-testing"></script>
+  <script src="js/wizard.js?v=3.1.10-testing"></script>
+  <script src="js/map.js?v=3.1.10-testing"></script>
+  <script src="js/rallyranking_bridge.js?v=3.1.10-testing"></script>
+  <script src="js/secrets.js?v=3.1.10-testing"></script>
+  <script src="js/app.js?v=3.1.10-testing"></script>
   <script>
-    const APP_VERSION = '3.0.0';
+    const APP_VERSION = '3.1.10-testing';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -615,7 +624,7 @@
             registration.unregister();
           }
         });
-        navigator.serviceWorker.register('./sw.js?v=3.0.0').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=3.1.10-testing').then(reg => {
           console.log('SW enregistré !', reg.scope);
         }).catch(err => {
           console.log('SW échec :', err);

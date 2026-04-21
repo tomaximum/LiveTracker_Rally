@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livetrack-rally-v3.0.0';
+const CACHE_NAME = 'livetrack-rally-v3.1.10';
 const ASSETS = [
   './',
   'index.html',
@@ -14,7 +14,6 @@ const ASSETS = [
   'js/mapCanvas.js',
   'js/rallyranking_bridge.js',
   'js/export.js',
-  'js/simulation.js',
   'js/storage.js',
   'js/telegram-client.js',
   'favicon.png',

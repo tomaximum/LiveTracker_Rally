@@ -26,10 +26,16 @@ function initRRBridge() {
     const inPilots = document.getElementById('input-pilots');
     const dateInput = document.getElementById('rr-cfg-date');
     
-    // Auto-fill configuration date to today
+    // Auto-fill configuration date and name to today
     if (dateInput && !dateInput.value) {
         const today = new Date();
-        dateInput.value = today.toISOString().split('T')[0];
+        const dateStr = today.toISOString().split('T')[0];
+        dateInput.value = dateStr;
+        
+        const nameInput = document.getElementById('rr-cfg-name');
+        if (nameInput && !nameInput.value) {
+            nameInput.value = `Classement du ${dateStr}`;
+        }
     }
 
     if (!dzRoadbook || !dzPilots) return;
@@ -170,6 +176,11 @@ function handleRRRoadbook(file) {
             }
 
             if(typeof showToast === 'function') showToast('Roadbook chargé !', 'success');
+            
+            // v3.1.9: Notify Bot B (Telemetry)
+            if (typeof sendTelemetryMessage === 'function') {
+                sendTelemetryMessage(`🏆 [RANKING] Roadbook chargé : ${file.name}`);
+            }
         } catch(err) {
             console.error('Erreur GPX:', err);
             alert("Erreur lors de l'analyse du Roadbook: " + err.message + "\nLigne (approx): " + (err.lineNumber || 'inconnue'));
@@ -205,6 +216,11 @@ function handleRRPilot(file) {
             statusEl.innerHTML = `<span style="color:var(--green)">✅ ${window.rrState.pilots.length} trace(s) analysée(s)</span><br><span style="color:var(--text-muted); font-size:11px; display:inline-block; margin-top:4px;">${pilotNames}</span>`;
             
             if(typeof showToast === 'function') showToast(`Pilote ${file.name.replace('.gpx','')} ajouté.`, 'info');
+
+            // v3.1.9: Notify Bot B (Telemetry)
+            if (typeof sendTelemetryMessage === 'function') {
+                sendTelemetryMessage(`🏆 [RANKING] Trace pilote chargée : ${file.name}`);
+            }
         } catch(err) {
             console.error(err);
         }

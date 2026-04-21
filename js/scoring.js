@@ -54,11 +54,13 @@ class ScoringEngine {
         let idealPath = (this.roadbook.route && this.roadbook.route.length >= 2) ? this.roadbook.route : [];
         let hasRealTrack = idealPath.length >= 2;
         
-        // v2.9.0.008: Si pas de tracé GPX réel, désactiver le corridor (les lignes droites WP-à-WP
-        // ne correspondent pas aux routes et génèrent de faux positifs de 300-1000m)
-        if (isPrecisionMode && !hasRealTrack) {
-            console.warn('[ScoringEngine] ⚠️ Mode Précision activé mais le Roadbook ne contient pas de tracé GPX (trkpt/rtept). Le calcul de corridor est DÉSACTIVÉ. Pour activer le corridor, utilisez un GPX avec un tracé réel (<trk> ou <rte>).');
-            isPrecisionMode = false; // Désactive le scoring corridor pour ce calcul
+        // v3.1.9: Si pas de tracé GPX réel, on utilise le tracé généré par le parseur (lignes WP-à-WP)
+        // On avertit l'utilisateur que c'est moins précis.
+        if (isPrecisionMode && !hasRealTrack && idealPath.length >= 2) {
+            console.warn('[ScoringEngine] ⚠️ Mode Précision activé sur un Roadbook sans tracé réel. Le corridor est basé sur des lignes droites entre Waypoints. Précision réduite.');
+        } else if (isPrecisionMode && !hasRealTrack) {
+            console.warn('[ScoringEngine] ⚠️ Mode Précision activé mais aucun point de tracé ou waypoint disponible. Le corridor est DÉSACTIVÉ.');
+            isPrecisionMode = false;
         }
 
         // v2.9.0.005: Simplification ultra-légère (RDP) pour éliminer les doublons sans déformer les courbes
