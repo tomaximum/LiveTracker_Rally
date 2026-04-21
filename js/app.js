@@ -36,10 +36,10 @@ const state = {
     wakeLock: null
 };
 
-// v3.1.2: Dynamic resolution to ensure SECRETS are loaded
-const getTelemetryUrl = () => (typeof SECRETS !== 'undefined') ? SECRETS.GDRIVE_WEBHOOK_URL : '';
+// v3.1.3: Dynamic resolution to ensure SECRETS are loaded
+const getTelemetryUrl = () => (typeof SECRETS !== 'undefined' && SECRETS.GDRIVE_WEBHOOK_URL) ? SECRETS.GDRIVE_WEBHOOK_URL : '';
 const TELEMETRY_SECRET = 'RallyTrack_Secure_V2'; // Shared secret with Google Script
-const APP_VERSION = '3.1.2-testing';
+const APP_VERSION = '3.1.3-testing';
 
 const OFFLINE_TIMEOUT = 5 * 60 * 1000;
 const CLEANUP_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -1620,46 +1620,56 @@ async function clearDatabase() {
  * Tests connection and handles secret status.
  */
 function initDebugUI() {
-    const badge = document.getElementById('secret-status-badge');
-    if (!badge) return;
+    try {
+        const badge = document.getElementById('secret-status-badge');
+        if (!badge) return;
 
-    if (typeof SECRETS !== 'undefined') {
-        const hasToken = SECRETS.TELEGRAM_ADMIN_TOKEN && !SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$');
-        const hasChat = SECRETS.TELEGRAM_ADMIN_CHAT_ID && !SECRETS.TELEGRAM_ADMIN_CHAT_ID.startsWith('$');
-        const hasDrive = SECRETS.GDRIVE_WEBHOOK_URL && !SECRETS.GDRIVE_WEBHOOK_URL.startsWith('$');
+        if (typeof SECRETS !== 'undefined') {
+            const hasToken = SECRETS.TELEGRAM_ADMIN_TOKEN && typeof SECRETS.TELEGRAM_ADMIN_TOKEN === 'string' && !SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$');
+            const hasChat = SECRETS.TELEGRAM_ADMIN_CHAT_ID && typeof SECRETS.TELEGRAM_ADMIN_CHAT_ID === 'string' && !SECRETS.TELEGRAM_ADMIN_CHAT_ID.startsWith('$');
+            const hasDrive = SECRETS.GDRIVE_WEBHOOK_URL && typeof SECRETS.GDRIVE_WEBHOOK_URL === 'string' && !SECRETS.GDRIVE_WEBHOOK_URL.startsWith('$');
 
-        if (hasToken && hasChat && hasDrive) {
-            badge.textContent = 'Secrets Cloud : ACTIFS ✅';
-            badge.style.background = '#065f46';
-            badge.style.color = '#fff';
-        } else {
-            badge.textContent = 'Secrets Cloud : PARTIELS ⚠️';
-            badge.style.background = '#92400e';
-            badge.style.color = '#fff';
-            console.warn("LiveTrack: Some secrets are missing or not injected.", SECRETS);
-        }
-    } else {
-        badge.textContent = 'Secrets Cloud : ABSENTS ❌';
-        badge.style.background = '#991b1b';
-        badge.style.color = '#fff';
-    }
-
-    const testBtn = document.getElementById('btn-test-admin-bot');
-    if (testBtn) {
-        testBtn.onclick = async () => {
-            const status = document.getElementById('admin-test-status');
-            status.textContent = "⏳ Envoi en cours...";
-            status.style.color = "var(--text-muted)";
-            
-            const success = await sendTelegramAdmin("Ceci est un test de connexion du Bot Admin.");
-            if (success) {
-                status.textContent = "✅ Message de test envoyé !";
-                status.style.color = "#10b981";
+            if (hasToken && hasChat && hasDrive) {
+                badge.textContent = 'Secrets Cloud : ACTIFS ✅';
+                badge.style.background = '#065f46';
+                badge.style.color = '#fff';
             } else {
-                status.textContent = "❌ Échec de l'envoi. Vérifiez vos secrets.";
-                status.style.color = "#ef4444";
+                badge.textContent = 'Secrets Cloud : PARTIELS ⚠️';
+                badge.style.background = '#92400e';
+                badge.style.color = '#fff';
+                console.warn("LiveTrack: Some secrets are missing or not injected.", SECRETS);
             }
-        };
+        } else {
+            badge.textContent = 'Secrets Cloud : ABSENTS ❌';
+            badge.style.background = '#991b1b';
+            badge.style.color = '#fff';
+        }
+
+        const testBtn = document.getElementById('btn-test-admin-bot');
+        if (testBtn) {
+            testBtn.onclick = async () => {
+                const status = document.getElementById('admin-test-status');
+                if (status) {
+                    status.textContent = "⏳ Envoi en cours...";
+                    status.style.color = "var(--text-muted)";
+                }
+                
+                const success = await sendTelegramAdmin("Ceci est un test de connexion du Bot Admin v3.1.3.");
+                if (status) {
+                    if (success) {
+                        status.textContent = "✅ Message de test envoyé !";
+                        status.style.color = "#10b981";
+                    } else {
+                        status.textContent = "❌ Échec de l'envoi. Vérifiez vos secrets.";
+                        status.style.color = "#ef4444";
+                    }
+                }
+            };
+        }
+    } catch (e) {
+        console.error("LiveTrack: initDebugUI Error", e);
+        const badge = document.getElementById('secret-status-badge');
+        if (badge) badge.textContent = 'Erreur Debug UI';
     }
 }
 
@@ -1670,7 +1680,7 @@ async function sendTelegramAdmin(message) {
     }
     
     // Safety check for raw template strings
-    if (SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$')) {
+    if (typeof SECRETS.TELEGRAM_ADMIN_TOKEN !== 'string' || SECRETS.TELEGRAM_ADMIN_TOKEN.startsWith('$')) {
          console.warn("Telemetry: Secret placeholders detected. Please check GitHub Secrets.");
          return false;
     }
