@@ -16,8 +16,6 @@
  */
 
 // === CONFIGURATION ===
-// Mot de passe secret (doit correspondre à TELEMETRY_SECRET dans app.js)
-var EXPECTED_KEY = "RallyTrack_Secure_V2"; 
 // L'ID du dossier racine dans votre Google Drive où on va stocker les exports
 var ROOT_FOLDER_ID = "REMPLACEZ_PAR_VOTRE_ID_DE_DOSSIER"; 
 // (Optionnel) ID d'un Google Sheet pour logger les "stats" de connexion. Laissez vide si inutile.
@@ -29,10 +27,6 @@ function doPost(e) {
     // Parser le corps de la requête envoyée par le LiveTracker
     var data = JSON.parse(e.postData.contents);
     
-    // Vérification stricte Anti-Spam
-    if (data.key !== EXPECTED_KEY) {
-      return response(401, false, "Accès refusé : Clé de télémétrie incorrecte.");
-    }
 
     var type = data.type;
     // -- Aide utilitaire : Chercher ou créer un sous-dossier (Sécurisé pour la concurrence) --
