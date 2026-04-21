@@ -182,9 +182,10 @@ Une fois dans le groupe, chaque pilote doit :
 
 ## 🗺️ Étape 5 — Lancer le suivi
 
-1. Dans l'application, importez votre fichier **GPX** (format OpenRally)
-2. Cliquez sur **▶ Démarrer** pour lancer le suivi
-3. Les pilotes apparaissent sur la carte en temps réel 🎯
+1. Dans l'application, assurez-vous que votre **Token Telegram** est bien enregistré (⚙️ Paramètres)
+2. Importez votre fichier **GPX** (format OpenRally) via le bouton d'import
+3. Le suivi démarre **automatiquement** — aucun bouton à appuyer
+4. Les pilotes qui partagent leur position apparaissent sur la carte en temps réel 🎯
 
 ---
 
